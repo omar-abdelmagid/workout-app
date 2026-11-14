@@ -12,6 +12,8 @@
   $('sheetId').value = localStorage.getItem(sheetIdKey) || '';
   $('origin').textContent = `Current origin: ${location.origin}`;
   let token = null, tokenClient = null, busy = false;
+  let oauthAttempt = 0;
+  const safeOAuthError = e => ({type:e?.type || 'unknown', message:e?.message || '', error:e?.error || ''});
   $('saveConfig').onclick = () => {
     localStorage.setItem(clientIdKey, $('clientId').value.trim());
     log('Client ID saved locally.');
@@ -22,6 +24,8 @@
   };
   const googleReady = () => !!window.google?.accounts?.oauth2;
   $('connect').onclick = () => {
+    const attempt = ++oauthAttempt;
+    log(`OAuth attempt ${attempt} started; browser: ${navigator.userAgent}; top-level: ${window.top === window}`);
     const clientId = $('clientId').value.trim();
     if (!clientId.endsWith('.apps.googleusercontent.com')) return status('authStatus', 'Enter a valid Web application client ID.', false);
     localStorage.setItem(clientIdKey, clientId);
@@ -31,6 +35,7 @@
         client_id: clientId,
         scope: 'https://www.googleapis.com/auth/spreadsheets',
         callback: response => {
+          log(`OAuth attempt ${attempt}: callback invoked; token present: ${!!response?.access_token}; error: ${response?.error || 'none'}`);
           if (response.error || !response.access_token) {
             status('authStatus', `Google authorization failed: ${response.error || 'no token'}`, false);
             log('Authorization response error', JSON.stringify({error:response.error,error_description:response.error_description}));
@@ -41,9 +46,13 @@
           $('test').disabled = false;
           log('Google OAuth access token received (token not logged).');
         },
-        error_callback: e => { status('authStatus', `Google popup error: ${e.type || 'unknown'}`, false); log('OAuth popup error', JSON.stringify(e)); }
+        error_callback: e => {
+          status('authStatus', `Google popup error: ${e?.type || 'unknown'}`, false);
+          log(`OAuth attempt ${attempt}: popup error`, JSON.stringify(safeOAuthError(e)));
+          log('If the callback never fires, retry without forcing the consent prompt; access tokens are never logged.');
+        }
       });
-      tokenClient.requestAccessToken({prompt: 'consent'});
+      tokenClient.requestAccessToken({prompt: $('noPrompt').checked ? '' : 'consent'});
       status('authStatus', 'Waiting for Google authorization…');
       log('Google authorization requested.');
     } catch (e) { status('authStatus', e.message, false); log('Authorization exception', e.message); }
