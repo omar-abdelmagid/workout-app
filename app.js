@@ -13,8 +13,8 @@ const PHOTO={
 };
 const photoUrl=name=>PHOTO[name]?'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'+encodeURIComponent(PHOTO[name])+'/0.jpg':'';
 const imageHtml=name=>{
- const src=photoUrl(name),query='https://www.google.com/search?tbm=isch&q='+encodeURIComponent(name+' exercise demonstration');
- return '<a class="exerciseImage" href="'+query+'" target="_blank" rel="noopener noreferrer" aria-label="View '+esc(name)+' exercise images">'+(src?'<img loading="lazy" src="'+src+'" alt="'+esc(name)+' exercise demonstration" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="imageFallback" hidden>View exercise images ↗</span>':'<span class="imageFallback">View exercise images ↗</span>')+'</a>';
+ const src=photoUrl(name);
+ return '<button type="button" class="exerciseImage" data-image-name="'+esc(name)+'" aria-label="Expand '+esc(name)+' image">'+(src?'<img loading="lazy" src="'+src+'" alt="'+esc(name)+' exercise" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="imageFallback" hidden>Image unavailable</span>':'<span class="imageFallback">Image unavailable</span>')+'</button>';
 };
 
 const $=id=>document.getElementById(id);
@@ -32,8 +32,10 @@ function exerciseSeed(e,i){return {id:i,name:e[0],sets:e[1],reps:e[2],alternativ
 function render(){
 $('program').value=state.programId;
 $('programName').textContent=program().name;
+$('homeProgram').textContent=program().name;
 $('stickyProgress').hidden=!state.active;
 $('active').hidden=!state.active;
+$('home').hidden=!!state.active;
 $('upcoming').hidden=!!state.active;
 $('navHistory').textContent='History ('+state.sessions.length+')';
 if(state.active) renderActive(); else renderUpcoming();
@@ -42,6 +44,8 @@ renderHistory();
 function renderUpcoming(){
 const p=program(),i=(state.next[p.id]||0)%p.days.length,d=p.days[i];
 $('nextTitle').textContent=d.name;
+$('homeNext').textContent='Next: '+d.name;
+$('homeFocus').textContent=({ 'Lower A':'Quads · Hamstrings · Calves · Core','Lower B':'Glutes · Hamstrings · Calves · Core','Upper A':'Chest · Back · Arms','Upper B':'Back · Chest · Arms','Legs':'Quads · Hamstrings · Glutes','Chest & Biceps':'Chest · Biceps','Back & Triceps':'Back · Triceps','Shoulders':'Shoulders · Rear delts','Mobility & Abs':'Mobility · Core' })[d.name]||'Strength training';
 $('nextMeta').textContent='Day '+(i+1)+' of '+p.days.length+' · '+d.ex.length+' exercises';
 $('nextWarmup').textContent=d.warmup;
 $('preview').innerHTML=d.ex.map(e=>'<li class="previewItem">'+imageHtml(e[0])+'<span><strong>'+esc(e[0])+'</strong><small>'+e[1]+' × '+esc(e[2])+'</small></span></li>').join('');
@@ -79,7 +83,7 @@ state.programId=e.target.value;save();render();
 $('start').onclick=()=>{
 const p=program(),idx=(state.next[p.id]||0)%p.days.length,d=p.days[idx];
 state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:d.ex.map(exerciseSeed)};
-save();render();window.scrollTo(0,0);
+save();render();showSection('active');
 };
 $('exercises').onchange=e=>{
 const el=e.target,i=Number(el.dataset.index),s=state.active;if(!s||!Number.isInteger(i)||!s.exercises[i])return;
@@ -107,9 +111,9 @@ const done=s.exercises.filter(e=>e.done).length;
 if(done===0&&!confirm('No exercises are checked. Finish this workout anyway?'))return;
 if(done<s.exercises.length&&!confirm('Only '+done+' of '+s.exercises.length+' exercises are checked. Finish anyway?'))return;
 s.endedAt=now();state.sessions.push(s);state.next[s.programId]=(s.dayIndex+1)%PROGRAMS.find(p=>p.id===s.programId).days.length;state.active=null;
-save();render();$('historySection').scrollIntoView({behavior:'smooth'});
+save();render();showSection('historySection');
 };
-$('discard').onclick=()=>{if(!state.active||!confirm('Discard this in-progress workout? This cannot be undone.'))return;state.active=null;save();render();};
+$('discard').onclick=()=>{if(!state.active||!confirm('Discard this in-progress workout? This cannot be undone.'))return;state.active=null;save();render();showSection('home');};
 $('historyList').onclick=e=>{
 const b=e.target.closest('[data-history]');if(!b)return;
 const s=state.sessions.find(x=>x.id===b.dataset.history);if(!s)return;
@@ -122,11 +126,39 @@ $('export').onclick=()=>{
 const blob=new Blob([JSON.stringify({exportedAt:now(),version:1,...state},null,2)],{type:'application/json'});
 const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='workout-history-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-$('navHistory').onclick=()=>$('historySection').scrollIntoView({behavior:'smooth'});
-$('browse').onclick=()=>{$('programDialog').showModal();};
+$('navHistory').onclick=()=>showSection('historySection');
+$('homeHistory').onclick=()=>showSection('historySection');
+$('homePrograms').onclick=()=>showSection('programSection');
+$('homeProgress').onclick=()=>showSection('progressSection');
+$('backHome').onclick=()=>{$('backHome').hidden=true;showSection('home');};
+$('historyBack').onclick=()=>showSection('home');
+$('backPrograms').onclick=()=>showSection('home');
+$('backProgress').onclick=()=>showSection('home');
+$('today').onclick=()=>{showSection('upcoming');$('backHome').hidden=false;};
+$('settings').onclick=()=>{$('programDialog').showModal();};
+function showSection(id){
+ if(state.active && id==='home')id='active';
+ for(const section of ['home','upcoming','active','historySection','programSection','progressSection'])$(section).hidden=section!==id;
+ $('stickyProgress').hidden=!state.active||id!=='active';
+ window.scrollTo(0,0);
+}
+document.addEventListener('click',event=>{
+ const b=event.target.closest('[data-image-name]');if(!b)return;
+ const name=b.dataset.imageName,src=photoUrl(name);
+ $('imageTitle').textContent=name;
+ $('imageLarge').hidden=!src;
+ $('imageLarge').src=src||'';
+ $('imageMissing').hidden=!!src;
+ $('imageDialog').showModal();
+});
+$('closeImage').onclick=()=>$('imageDialog').close();
+$('imageLarge').onerror=()=>{$('imageLarge').hidden=true;$('imageMissing').hidden=false;};
+
+$('browse').onclick=()=>showSection('programSection');
 $('closePrograms').onclick=()=>$('programDialog').close();
-$('program').onchange=(()=>{const prior=$('program').onchange;return e=>{prior(e);if(!state.active)$('programDialog').close();};})();
+$('program').onchange=(()=>{const prior=$('program').onchange;return e=>{prior(e);if(!state.active){$('programDialog').close();render();showSection('home');}};})();
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 render();
+showSection(state.active?'active':'home');
 })();
