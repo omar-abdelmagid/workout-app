@@ -60,7 +60,7 @@ $('stickyBar').style.width=(100*completed/s.exercises.length)+'%';
 $('stickyText').textContent=s.dayName+' · '+completed+'/'+s.exercises.length;
 $('stickyProgram').textContent=s.programName;
 $('exercises').innerHTML=s.exercises.map((e,i)=>`
-<article class="exercise ${e.done?'done':''}">
+<article class="exercise ${e.done?'done':''}" data-exercise="${i}">
 <div class="exerciseTop">${imageHtml(e.name)}<label class="check"><input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}><span><strong>${esc(e.name)}</strong><small>${e.sets} sets × ${esc(e.reps)}</small></span></label></div>
 <div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
 <button type="button" class="subtle" data-index="${i}" data-action="swap">${e.substituted?'Use original':'Use alternative'}</button></div>
@@ -89,8 +89,20 @@ $('exercises').onchange=e=>{
 const el=e.target,i=Number(el.dataset.index),s=state.active;if(!s||!Number.isInteger(i)||!s.exercises[i])return;
 if(el.dataset.action==='done')s.exercises[i].done=el.checked;
 if(el.dataset.action==='weight'){const value=el.value.trim();if(value!==''&&(!Number.isFinite(Number(value))||Number(value)<0)){alert('Enter a valid nonnegative weight.');return;}s.exercises[i].weight=value;}
-save();renderActive();
-};
+save();
+if(el.dataset.action==='done'){
+ const card=el.closest('.exercise');card.classList.toggle('done',el.checked);
+ updateProgress();
+}
+}; 
+function updateProgress(){
+ const s=state.active;if(!s)return;
+ const completed=s.exercises.filter(e=>e.done).length;
+ $('progress').textContent=completed+' of '+s.exercises.length+' completed';
+ $('bar').style.width=(100*completed/s.exercises.length)+'%';
+ $('stickyBar').style.width=(100*completed/s.exercises.length)+'%';
+ $('stickyText').textContent=s.dayName+' · '+completed+'/'+s.exercises.length;
+}
 $('exercises').oninput=e=>{
 const el=e.target;if(el.dataset.action!=='weight'||!state.active)return;
 const ex=state.active.exercises[Number(el.dataset.index)];if(!ex)return;
@@ -103,7 +115,13 @@ if(b.dataset.action!=='swap')return;
 const ex=state.active.exercises[Number(b.dataset.index)];
 if(!ex.substituted){ex.originalName=ex.name;ex.name=ex.alternative;ex.substituted=true;}
 else{ex.name=ex.originalName;ex.substituted=false;}
-save();renderActive();
+save();
+const card=b.closest('.exercise');
+const picture=card.querySelector('.exerciseImage');
+picture.outerHTML=imageHtml(ex.name);
+card.querySelector('.check strong').textContent=ex.name;
+card.querySelector('[data-action="swap"]').textContent=ex.substituted?'Use original':'Use alternative';
+card.querySelector('small.muted').textContent='Alternative: '+(ex.substituted?(ex.originalName||'Original exercise'):ex.alternative);
 };
 $('finish').onclick=()=>{
 const s=state.active;if(!s)return;
@@ -128,17 +146,50 @@ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.d
 };
 $('navHistory').onclick=()=>showSection('historySection');
 $('homeHistory').onclick=()=>showSection('historySection');
-$('homePrograms').onclick=()=>showSection('programSection');
+$('homePrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
 $('homeProgress').onclick=()=>showSection('progressSection');
 $('backHome').onclick=()=>{$('backHome').hidden=true;showSection('home');};
 $('historyBack').onclick=()=>showSection('home');
-$('backPrograms').onclick=()=>showSection('home');
+$('backPrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
+$('programHome').onclick=()=>showSection('home');
+$('dayBack').onclick=()=>{showSection('programSection');};
+let browsedProgram=null;
+function renderProgramGrid(){
+ $('programGrid').innerHTML=PROGRAMS.map(p=>'<button type="button" class="programTile" data-program="'+p.id+'"><span class="programTileIcon">▤</span><strong>'+esc(p.name)+'</strong><small>'+p.days.length+' training days</small>'+(p.id===state.programId?'<span class="selectedPill">Active program</span>':'')+'</button>').join('');
+}
+function renderProgramDays(p){
+ browsedProgram=p;
+ $('programDaysTitle').textContent=p.name;
+ $('programDaysList').innerHTML=p.days.map((d,i)=>'<button type="button" class="dayTile" data-day="'+i+'"><span><small>DAY '+(i+1)+'</small><strong>'+esc(d.name)+'</strong><small>'+d.ex.length+' exercises</small></span><span aria-hidden="true">›</span></button>').join('');
+ $('selectProgram').textContent=p.id===state.programId?'Active program ✓':'Set as active program';
+ $('selectProgram').disabled=p.id===state.programId||!!state.active;
+ $('programLock').hidden=!state.active;
+}
+$('programGrid').onclick=e=>{
+ const b=e.target.closest('[data-program]');if(!b)return;
+ const p=PROGRAMS.find(p=>p.id===b.dataset.program);if(!p)return;
+ renderProgramDays(p);showSection('programDaysSection');
+};
+$('programDaysList').onclick=e=>{
+ const b=e.target.closest('[data-day]');if(!b||!browsedProgram)return;
+ const i=Number(b.dataset.day),d=browsedProgram.days[i];if(!d)return;
+ $('dayTitle').textContent=d.name;
+ $('dayMeta').textContent=browsedProgram.name+' · Day '+(i+1)+' of '+browsedProgram.days.length;
+ $('dayWarmup').textContent=d.warmup;
+ $('dayExercises').innerHTML=d.ex.map(ex=>'<li class="previewItem">'+imageHtml(ex[0])+'<span><strong>'+esc(ex[0])+'</strong><small>'+ex[1]+' sets × '+esc(ex[2])+'</small></span></li>').join('');
+ showSection('daySection');
+};
+$('selectProgram').onclick=()=>{
+ if(!browsedProgram||state.active)return;
+ state.programId=browsedProgram.id;save();render();renderProgramDays(browsedProgram);renderProgramGrid();
+};
+
 $('backProgress').onclick=()=>showSection('home');
 $('today').onclick=()=>{showSection('upcoming');$('backHome').hidden=false;};
 $('settings').onclick=()=>{$('programDialog').showModal();};
 function showSection(id){
  if(state.active && id==='home')id='active';
- for(const section of ['home','upcoming','active','historySection','programSection','progressSection'])$(section).hidden=section!==id;
+ for(const section of ['home','upcoming','active','historySection','programSection','programDaysSection','daySection','progressSection'])$(section).hidden=section!==id;
  $('stickyProgress').hidden=!state.active||id!=='active';
  window.scrollTo(0,0);
 }
@@ -154,9 +205,9 @@ document.addEventListener('click',event=>{
 $('closeImage').onclick=()=>$('imageDialog').close();
 $('imageLarge').onerror=()=>{$('imageLarge').hidden=true;$('imageMissing').hidden=false;};
 
-$('browse').onclick=()=>showSection('programSection');
+$('browse').onclick=()=>{renderProgramGrid();showSection('programSection');};
 $('closePrograms').onclick=()=>$('programDialog').close();
-$('program').onchange=(()=>{const prior=$('program').onchange;return e=>{prior(e);if(!state.active){$('programDialog').close();render();showSection('home');}};})();
+$('program').onchange=(()=>{const prior=$('program').onchange;return e=>{prior(e);if(!state.active){$('programDialog').close();renderProgramGrid();showSection('home');}};})();
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 render();
