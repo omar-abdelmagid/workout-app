@@ -1,109 +1,105 @@
 (() => {
-  const $ = id => document.getElementById(id);
-  const logLines = [];
-  const log = (message, details) => {
-    const line = `${new Date().toLocaleTimeString()} ${message}${details ? '\n' + String(details) : ''}`;
-    logLines.push(line); $('log').textContent = logLines.join('\n\n');
-  };
-  const status = (id, message, ok = null) => { const el = $(id); el.textContent = message; el.className = ok === null ? '' : (ok ? 'good' : 'bad'); };
-  const clientIdKey = 'phase0_google_client_id';
-  const sheetIdKey = 'phase0_spreadsheet_id';
-  $('clientId').value = localStorage.getItem(clientIdKey) || '';
-  $('sheetId').value = localStorage.getItem(sheetIdKey) || '';
-  $('origin').textContent = `Current origin: ${location.origin}`;
-  let token = null, tokenClient = null, busy = false;
-  let oauthAttempt = 0;
-  const safeOAuthError = e => ({type:e?.type || 'unknown', message:e?.message || '', error:e?.error || ''});
-  $('saveConfig').onclick = () => {
-    localStorage.setItem(clientIdKey, $('clientId').value.trim());
-    log('Client ID saved locally.');
-  };
-  $('copy').onclick = async () => {
-    try { await navigator.clipboard.writeText(logLines.join('\n\n')); log('Diagnostics copied.'); }
-    catch (e) { log('Could not copy diagnostics', e.message); }
-  };
-  const googleReady = () => !!window.google?.accounts?.oauth2;
-  $('connect').onclick = () => {
-    const attempt = ++oauthAttempt;
-    log(`OAuth attempt ${attempt} started; browser: ${navigator.userAgent}; top-level: ${window.top === window}`);
-    const clientId = $('clientId').value.trim();
-    if (!clientId.endsWith('.apps.googleusercontent.com')) return status('authStatus', 'Enter a valid Web application client ID.', false);
-    localStorage.setItem(clientIdKey, clientId);
-    if (!googleReady()) return status('authStatus', 'Google sign-in script not loaded. Check connectivity and reload.', false);
-    try {
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'https://www.googleapis.com/auth/spreadsheets',
-        callback: response => {
-          log(`OAuth attempt ${attempt}: callback invoked; token present: ${!!response?.access_token}; error: ${response?.error || 'none'}`);
-          if (response.error || !response.access_token) {
-            status('authStatus', `Google authorization failed: ${response.error || 'no token'}`, false);
-            log('Authorization response error', JSON.stringify({error:response.error,error_description:response.error_description}));
-            return;
-          }
-          token = response.access_token;
-          status('authStatus', 'Connected for this session ✓', true);
-          $('test').disabled = false;
-          log('Google OAuth access token received (token not logged).');
-        },
-        error_callback: e => {
-          status('authStatus', `Google popup error: ${e?.type || 'unknown'}`, false);
-          log(`OAuth attempt ${attempt}: popup error`, JSON.stringify(safeOAuthError(e)));
-          log('If the callback never fires, retry without forcing the consent prompt; access tokens are never logged.');
-        }
-      });
-      tokenClient.requestAccessToken({prompt: $('noPrompt').checked ? '' : 'consent'});
-      status('authStatus', 'Waiting for Google authorization…');
-      log('Google authorization requested.');
-    } catch (e) { status('authStatus', e.message, false); log('Authorization exception', e.message); }
-  };
-  async function googleApi(path, options = {}) {
-    if (!token) throw new Error('Not signed in. Tap Connect Google again.');
-    const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets' + path, {
-      ...options,
-      headers: {Authorization: `Bearer ${token}`, ...(options.body ? {'Content-Type':'application/json'} : {}), ...options.headers}
-    });
-    const text = await response.text();
-    let data; try { data = JSON.parse(text); } catch { data = {raw:text}; }
-    if (!response.ok) {
-      if (response.status === 401) { token = null; $('test').disabled = true; status('authStatus','Session expired. Connect Google again.',false); }
-      throw new Error(`HTTP ${response.status}: ${data.error?.message || text.slice(0,300)}`);
-    }
-    return data;
-  }
-  $('test').onclick = async () => {
-    if (busy) return; busy = true; $('test').disabled = true;
-    status('testStatus', 'Testing…');
-    try {
-      let sheetId = $('sheetId').value.trim();
-      if (!sheetId) {
-        log('Creating a new spreadsheet…');
-        const created = await googleApi('', {method:'POST', body:JSON.stringify({properties:{title:'Workout App Phase 0 Test'},sheets:[{properties:{title:'Phase0'}}]})});
-        sheetId = created.spreadsheetId;
-        $('sheetId').value = sheetId;
-        log('Spreadsheet created successfully.');
-      }
-      localStorage.setItem(sheetIdKey, sheetId);
-      const metadata = await googleApi('/' + encodeURIComponent(sheetId) + '?fields=sheets.properties.title');
-      const tab = metadata.sheets?.[0]?.properties?.title;
-      if (!tab) throw new Error('Spreadsheet has no tabs.');
-      const uniqueId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
-      const row = [uniqueId, new Date().toISOString(), 'Phase 0', 'Google Sheets connection test', 'SUCCESS'];
-      const range = encodeURIComponent(`'${tab.replaceAll("'", "''")}'!A:E`);
-      log('Appending test row…');
-      await googleApi(`/${encodeURIComponent(sheetId)}/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {method:'POST',body:JSON.stringify({values:[row]})});
-      log('Reading back test row…');
-      const result = await googleApi(`/${encodeURIComponent(sheetId)}/values/${range}`);
-      const found = result.values?.some(r => r[0] === uniqueId && r[4] === 'SUCCESS');
-      if (!found) throw new Error('Write completed, but the test row was not found when reading back.');
-      status('testStatus', 'SUCCESS: Test workout saved to Google Sheets and verified ✓', true);
-      const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/edit`;
-      $('sheetLink').replaceChildren();
-      const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Open test spreadsheet'; $('sheetLink').append(a);
-      log('SUCCESS: write and read-back verified.');
-    } catch (e) { status('testStatus', `FAILED: ${e.message}`, false); log('Test failed', e.message); }
-    finally { busy = false; $('test').disabled = !token; }
-  };
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').then(() => log('Service worker registered.')).catch(e => log('Service worker failed', e.message));
-  log(`App loaded. Origin: ${location.origin}. Display mode: ${matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'}. Online: ${navigator.onLine}.`);
+'use strict';
+const PROGRAMS=[{"id":"four","name":"4-Day Hypertrophy","days":[{"name":"Lower A","warmup":"Bike 3 min · knee-to-chest · 90/90 hip switches · glute bridges · dead bug · light leg press","ex":[["Leg Press",3,"8–12","Hack squat machine"],["Single-Leg Leg Press",2,"10–12/leg","Supported step-up"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Leg Extension",2,"12–15","Terminal knee extension"],["Standing Calf Raise",3,"12–15","Seated calf raise"],["Dead Bug",2,"8/side","Heel taps"]]},{"name":"Upper A","warmup":"Bike 3 min · arm circles · band pull-aparts · light row and press","ex":[["Dumbbell Bench Press",3,"8–10","Machine chest press"],["Seated Cable Row",3,"8–12","Chest-supported row"],["Incline Machine Chest Press",2,"10–12","Incline dumbbell press"],["Neutral-Grip Lat Pulldown",3,"10–12","Assisted neutral-grip pull-up"],["Cable Lateral Raise",2,"12–15","Dumbbell lateral raise"],["Cable Biceps Curl",2,"10–12","Dumbbell curl"],["Triceps Pressdown",3,"10–15","Rope pressdown"]]},{"name":"Lower B","warmup":"Bike 3 min · knee-to-chest · 90/90 hip switches · bridges · dead bug · light hip thrust","ex":[["Hip Thrust Machine",3,"8–12","Glute bridge"],["Low Step-Up",3,"8–10/leg","Single-leg leg press"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Seated Hip Abduction",2,"12–15","Cable hip abduction"],["Seated Calf Raise",3,"12–15","Standing calf raise"],["Suitcase Carry",2,"20–30 sec/side","Pallof hold"]]},{"name":"Upper B","warmup":"Bike 3 min · arm circles · pull-aparts · external rotations · light pulldown","ex":[["Neutral-Grip Lat Pulldown",3,"8–12","Assisted pull-up"],["Machine Chest Press",3,"8–12","Dumbbell bench press"],["Seated Cable Row",3,"10–12","Chest-supported row"],["Reverse Pec Deck",2,"12–15","Face pull"],["Dumbbell Biceps Curl",3,"10–12","Cable curl"],["Cable Triceps Extension",3,"10–15","Triceps pressdown"],["Pallof Press",2,"10–12/side","Dead bug"]]}]},{"id":"five","name":"5-Day Split","days":[{"name":"Chest & Biceps","warmup":"Bike 3 min · shoulder circles · band pull-aparts · light chest press","ex":[["Dumbbell Bench Press",3,"8–10","Machine chest press"],["Incline Machine Press",3,"10–12","Incline dumbbell press"],["Cable Fly",2,"12–15","Pec deck"],["Cable Biceps Curl",3,"10–12","Dumbbell curl"],["Hammer Curl",3,"10–12","Rope hammer curl"]]},{"name":"Legs","warmup":"Bike 5 min · 90/90 hip switches · glute bridges · light leg press","ex":[["Leg Press",3,"8–12","Hack squat machine"],["Single-Leg Leg Press",2,"10/leg","Low step-up"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Hip Thrust",3,"10","Glute bridge"],["Calf Raise",3,"12–15","Seated calf raise"]]},{"name":"Back & Triceps","warmup":"Bike 3 min · band pull-aparts · light pulldown and row","ex":[["Neutral-Grip Lat Pulldown",3,"8–12","Assisted pull-up"],["Seated Cable Row",3,"10–12","Chest-supported row"],["Chest-Supported Row",2,"10–12","Machine row"],["Triceps Pressdown",3,"10–15","Rope pressdown"],["Cable Triceps Extension",3,"10–12","Overhead rope extension"]]},{"name":"Shoulders","warmup":"Bike 3 min · wall slides · band external rotation · light lateral raises","ex":[["Supported Machine Shoulder Press",2,"8–10","Cable scaption"],["Cable Lateral Raise",3,"12–15","Dumbbell lateral raise"],["Reverse Pec Deck",3,"12–15","Face pull"],["Face Pull",2,"12–15","Reverse cable fly"],["Cable Scaption",2,"12","Light dumbbell scaption"]]},{"name":"Mobility & Abs","warmup":"Easy bike 5 min · gentle pain-free movement","ex":[["Supported 90/90 Hip Switches",2,"60 sec","Seated hip rotations"],["Hip Flexor Stretch",2,"45 sec/side","Half-kneeling hip flexor stretch"],["Knee-to-Chest",2,"45 sec/side","Supine knee hug"],["Hamstring Mobility",2,"45 sec/side","Supine hamstring stretch"],["Thoracic Rotation",2,"8/side","Open book"],["Wall Slides",2,"10","Band external rotation"],["Dead Bug",2,"8/side","Heel taps"],["Bird Dog",2,"8/side","Heel taps"]]}]}];
+const KEY='workout_tracker_phase1_v1';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const now=()=>new Date().toISOString();
+const date=s=>new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
+const initial=()=>({programId:'four',next:{four:0,five:0},sessions:[],active:null});
+let state;
+try { state=JSON.parse(localStorage.getItem(KEY))||initial(); if(!state.next||!Array.isArray(state.sessions)) throw Error('bad data'); } catch(e) {state=initial(); alert('Saved workout data could not be read. The app will start with a new local history.');}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){alert('Could not save workout locally. Check device storage before continuing.');throw e;}}
+const program=()=>PROGRAMS.find(p=>p.id===state.programId)||PROGRAMS[0];
+const day=()=>program().days[state.next[program().id]%program().days.length];
+const allDone=s=>s.exercises.every(e=>e.done);
+function exerciseSeed(e,i){return {id:i,name:e[0],sets:e[1],reps:e[2],alternative:e[3],done:false,weight:'',substituted:false};}
+function render(){
+$('program').value=state.programId;
+$('active').hidden=!state.active;
+$('upcoming').hidden=!!state.active;
+$('navHistory').textContent='History ('+state.sessions.length+')';
+if(state.active) renderActive(); else renderUpcoming();
+renderHistory();
+}
+function renderUpcoming(){
+const p=program(),i=(state.next[p.id]||0)%p.days.length,d=p.days[i];
+$('nextTitle').textContent=d.name;
+$('nextMeta').textContent='Day '+(i+1)+' of '+p.days.length+' · '+d.ex.length+' exercises';
+$('nextWarmup').textContent=d.warmup;
+$('preview').innerHTML=d.ex.map(e=>'<li>'+esc(e[0])+' <span class="muted">'+e[1]+' × '+esc(e[2])+'</span></li>').join('');
+}
+function renderActive(){
+const s=state.active,completed=s.exercises.filter(e=>e.done).length;
+$('activeTitle').textContent=s.dayName;
+$('activeMeta').textContent=s.programName+' · Started '+date(s.startedAt);
+$('progress').textContent=completed+' of '+s.exercises.length+' completed';
+$('bar').style.width=(100*completed/s.exercises.length)+'%';
+$('exercises').innerHTML=s.exercises.map((e,i)=>`
+<article class="exercise ${e.done?'done':''}">
+<div class="exerciseTop"><label class="check"><input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}><span><strong>${esc(e.name)}</strong><small>${e.sets} sets × ${esc(e.reps)}</small></span></label></div>
+<div class="fields"><label>Max weight <span class="muted">(lb, optional)</span><input type="number" min="0" step="0.5" inputmode="decimal" placeholder="—" data-index="${i}" data-action="weight" value="${esc(e.weight)}"></label>
+<button type="button" class="subtle" data-index="${i}" data-action="swap">${e.substituted?'Use original':'Use alternative'}</button></div>
+<small class="muted">Alternative: ${esc(e.substituted?e.originalName||'Original exercise':e.alternative)}</small>
+</article>`).join('');
+$('finish').disabled=false;
+}
+function renderHistory(){
+const rows=state.sessions.slice().reverse();
+$('historyList').innerHTML=rows.length?rows.map(s=>{
+const done=s.exercises.filter(e=>e.done).length;
+return `<article class="historyItem"><div><strong>${esc(s.dayName)}</strong><small>${esc(s.programName)} · ${date(s.startedAt)}</small><small>${done}/${s.exercises.length} exercises · ${Math.max(1,Math.round((new Date(s.endedAt)-new Date(s.startedAt))/60000))} min</small></div><button class="subtle" data-history="${esc(s.id)}">Details</button></article>`;
+}).join(''):'<p class="muted">No completed workouts yet.</p>';
+}
+$('program').onchange=e=>{
+if(state.active){e.target.value=state.programId;alert('Finish or discard the active workout before changing programs.');return;}
+state.programId=e.target.value;save();render();
+};
+$('start').onclick=()=>{
+const p=program(),idx=(state.next[p.id]||0)%p.days.length,d=p.days[idx];
+state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:d.ex.map(exerciseSeed)};
+save();render();window.scrollTo(0,0);
+};
+$('exercises').onchange=e=>{
+const el=e.target,i=Number(el.dataset.index),s=state.active;if(!s||!Number.isInteger(i)||!s.exercises[i])return;
+if(el.dataset.action==='done')s.exercises[i].done=el.checked;
+if(el.dataset.action==='weight'){const value=el.value.trim();if(value!==''&&(!Number.isFinite(Number(value))||Number(value)<0)){alert('Enter a valid nonnegative weight.');return;}s.exercises[i].weight=value;}
+save();renderActive();
+};
+$('exercises').oninput=e=>{
+const el=e.target;if(el.dataset.action!=='weight'||!state.active)return;
+const ex=state.active.exercises[Number(el.dataset.index)];if(!ex)return;
+if(el.value===''||(Number.isFinite(Number(el.value))&&Number(el.value)>=0)){ex.weight=el.value;save();}
+};
+$('exercises').onclick=e=>{
+const b=e.target.closest('button[data-action="swap"]');if(!b||!state.active)return;
+const ex=state.active.exercises[Number(b.dataset.index)];
+if(!ex.substituted){ex.originalName=ex.name;ex.name=ex.alternative;ex.substituted=true;}
+else{ex.name=ex.originalName;ex.substituted=false;}
+save();renderActive();
+};
+$('finish').onclick=()=>{
+const s=state.active;if(!s)return;
+const done=s.exercises.filter(e=>e.done).length;
+if(done===0&&!confirm('No exercises are checked. Finish this workout anyway?'))return;
+if(done<s.exercises.length&&!confirm('Only '+done+' of '+s.exercises.length+' exercises are checked. Finish anyway?'))return;
+s.endedAt=now();state.sessions.push(s);state.next[s.programId]=(s.dayIndex+1)%PROGRAMS.find(p=>p.id===s.programId).days.length;state.active=null;
+save();render();$('historySection').scrollIntoView({behavior:'smooth'});
+};
+$('discard').onclick=()=>{if(!state.active||!confirm('Discard this in-progress workout? This cannot be undone.'))return;state.active=null;save();render();};
+$('historyList').onclick=e=>{
+const b=e.target.closest('[data-history]');if(!b)return;
+const s=state.sessions.find(x=>x.id===b.dataset.history);if(!s)return;
+$('detailsTitle').textContent=s.dayName+' · '+date(s.startedAt);
+$('detailsBody').innerHTML='<p class="muted">Started: '+date(s.startedAt)+'<br>Finished: '+date(s.endedAt)+'</p>'+s.exercises.map(x=>'<p>'+ (x.done?'✓ ':'○ ')+esc(x.name)+' · '+x.sets+' × '+esc(x.reps)+(x.weight!==''?' · '+esc(x.weight)+' lb':'')+'</p>').join('');
+$('details').showModal();
+};
+$('closeDetails').onclick=()=>$('details').close();
+$('export').onclick=()=>{
+const blob=new Blob([JSON.stringify({exportedAt:now(),version:1,...state},null,2)],{type:'application/json'});
+const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='workout-history-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+$('navHistory').onclick=()=>$('historySection').scrollIntoView({behavior:'smooth'});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+render();
 })();

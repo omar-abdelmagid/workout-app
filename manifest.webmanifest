@@ -1,1 +1,18 @@
-{"name":"Workout Sync Test","short_name":"Workout Test","description":"Phase 0 Google Sheets connection test","start_url":"./","scope":"./","display":"standalone","background_color":"#0b1020","theme_color":"#111827","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "Workout Tracker",
+  "short_name": "Workout",
+  "description": "Personal workout tracker",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
