@@ -152,7 +152,7 @@ $('backHome').onclick=()=>{$('backHome').hidden=true;showSection('home');};
 $('historyBack').onclick=()=>showSection('home');
 $('backPrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
 $('programHome').onclick=()=>showSection('home');
-$('dayBack').onclick=()=>{showSection('programSection');};
+$('dayBack').onclick=()=>{showSection('programDaysSection');};
 let browsedProgram=null;
 function renderProgramGrid(){
  $('programGrid').innerHTML=PROGRAMS.map(p=>'<button type="button" class="programTile" data-program="'+p.id+'"><span class="programTileIcon">▤</span><strong>'+esc(p.name)+'</strong><small>'+p.days.length+' training days</small>'+(p.id===state.programId?'<span class="selectedPill">Active program</span>':'')+'</button>').join('');
