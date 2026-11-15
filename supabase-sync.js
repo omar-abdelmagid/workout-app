@@ -39,7 +39,7 @@ async function token(){
  if(Date.now()/1000 < (auth.expires_at||0)-90)return auth.access_token;
  if(!refreshPromise)refreshPromise=(async()=>{
   try{const result=await request('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:auth.refresh_token}});acceptAuth(result);return auth.access_token}
-  catch(e){persistAuth(null);message('Session expired. Request a new sign-in link.',true);throw e}
+  catch(e){persistAuth(null);message('Session expired. Sign in with your password.',true);throw e}
  })().finally(()=>{refreshPromise=null});
  return refreshPromise;
 }
@@ -82,45 +82,31 @@ async function sync(){
 function schedule(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(()=>{syncTimer=null;sync()},1200)}
 const savedEmail=localStorage.getItem('workout_supabase_email')||'';
 $('syncEmail').value=savedEmail;$('homeEmail').value=savedEmail;
-async function sendLink(email){
- email=String(email||'').trim().replace(/[\u200B-\u200D\uFEFF]/g,'');if(!email.includes('@')||!email.split('@')[1]?.includes('.')||/\s/.test(email))throw Error('Enter a valid email address.');
+async function passwordAuth(email,password,signup){
+ email=String(email||'').trim();
+ if(!email.includes('@')||!email.split('@')[1]?.includes('.')||/\\s/.test(email))throw Error('Enter a valid email address.');
+ if(!password||password.length<6)throw Error('Password must be at least 6 characters.');
  localStorage.setItem('workout_supabase_email',email);
  $('syncEmail').value=email;$('homeEmail').value=email;
- await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true,email_redirect_to:location.origin+location.pathname}});
- $('syncVerify').hidden=false;$('homeVerify').hidden=false;
- message('Email sent. Copy the sign-in link and paste it below.');
+ const data=await request(signup?'/auth/v1/signup':'/auth/v1/token?grant_type=password',{method:'POST',body:{email,password,...(signup?{data:{}}:{})}});
+ if(data?.access_token&&data?.refresh_token){acceptAuth(data);message('Signed in · backing up automatically');schedule()}
+ else if(signup)message('Account created. Check your email for confirmation, then sign in.');
+ else throw Error('Sign-in did not return a session.');
 }
-async function verifyLink(raw){
- const input=raw.trim();let url;
- try{url=new URL(input)}catch{throw Error('Paste the complete link from your sign-in email.')}
- const expected=new URL(config().url);
- if(url.protocol!=='https:'||url.origin!==expected.origin||url.pathname!=='/auth/v1/verify')throw Error('This is not a valid Supabase sign-in link. Copy the link from your email.');
- const tokenHash=url.searchParams.get('token')||url.searchParams.get('token_hash');
- const type=url.searchParams.get('type');
- if(!tokenHash||!['magiclink','email','signup'].includes(type))throw Error('The email link is missing its verification token.');
- const data=await request('/auth/v1/verify',{method:'POST',body:{token_hash:tokenHash,type}});
- acceptAuth(data);
- $('homeLink').value='';$('syncLink').value='';
- $('syncVerify').hidden=true;$('homeVerify').hidden=true;
- $('backupDetails').open=false;
- message('Signed in · backing up automatically');schedule();
-}
-async function withLoginProgress(kind,action){
- if(loginBusy)return;
- loginBusy=true;update();
- const send=kind==='send';
- const ids=send?['syncLogin','homeSendCode']:['syncConfirm','homeConfirm'];
+async function withLoginProgress(signup,email,password){
+ if(loginBusy)return;loginBusy=true;update();
+ const ids=signup?['syncConfirm','homeConfirm']:['syncLogin','homeSendCode'];
  const labels=ids.map(id=>$(id).textContent);
- ids.forEach(id=>$(id).textContent=send?'Sending…':'Verifying…');
- message(send?'Sending sign-in email…':'Verifying your sign-in link…');
- try{await action()}
- catch(e){message((send?'Could not send email: ':'Could not sign in: ')+(e?.message||'Network error'),true)}
+ ids.forEach(id=>$(id).textContent=signup?'Creating…':'Signing in…');
+ message(signup?'Creating account…':'Signing in…');
+ try{await passwordAuth(email,password,signup)}
+ catch(e){message((signup?'Account creation failed: ':'Sign-in failed: ')+(e?.message||'Network error'),true)}
  finally{ids.forEach((id,i)=>$(id).textContent=labels[i]);loginBusy=false;update()}
 }
-$('syncLogin').onclick=()=>withLoginProgress('send',()=>sendLink($('syncEmail').value));
-$('homeSendCode').onclick=()=>withLoginProgress('send',()=>sendLink($('homeEmail').value));
-$('syncConfirm').onclick=()=>withLoginProgress('verify',()=>verifyLink($('syncLink').value));
-$('homeConfirm').onclick=()=>withLoginProgress('verify',()=>verifyLink($('homeLink').value));
+$('syncLogin').onclick=()=>withLoginProgress(false,$('syncEmail').value,$('syncPassword').value);
+$('homeSendCode').onclick=()=>withLoginProgress(false,$('homeEmail').value,$('homePassword').value);
+$('syncConfirm').onclick=()=>withLoginProgress(true,$('syncEmail').value,$('syncPassword').value);
+$('homeConfirm').onclick=()=>withLoginProgress(true,$('homeEmail').value,$('homePassword').value);
 $('syncLogout').onclick=async()=>{
  try{const t=await token();if(t)await request('/auth/v1/logout',{method:'POST',token:t})}catch{}
  persistAuth(null);message('Signed out. Local workouts are still saved.');
