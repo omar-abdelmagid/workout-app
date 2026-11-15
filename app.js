@@ -83,7 +83,11 @@ if(!localStorage.getItem(KEY))dbPromise.then(db=>{if(!db||localStorage.getItem(K
 const program=()=>PROGRAMS.find(p=>p.id===state.programId)||PROGRAMS.find(p=>!p.archived)||PROGRAMS[0];
 const day=()=>program().days[(state.next[program().id]||0)%program().days.length];
 const allDone=s=>s.exercises.every(e=>e.done);
-function exerciseSeed(e,i){return {id:i,name:e[0],sets:e[1],reps:e[2],alternative:e[3],done:false,weight:'',substituted:false};}
+function warmupExercises(d){
+ if(Array.isArray(d.warmupEx))return d.warmupEx;
+ return String(d.warmup||'').split(/\s*[·•\n]\s*/).map(x=>x.trim()).filter(Boolean).map(name=>[name,1,'Complete once','']);
+}
+function exerciseSeed(e,i,group='main'){return {id:i,name:e[0],sets:e[1],reps:e[2],alternative:e[3]||'',group,done:false,weight:'',substituted:false};}
 function render(){
 
 $('programName').textContent=program().name;
@@ -98,9 +102,7 @@ const p=program(),i=(state.next[p.id]||0)%p.days.length,d=p.days[i];
 $('nextTitle').textContent=d.name;
 $('homeNext').textContent='Next: '+d.name;
 $('homeFocus').textContent=({ 'Lower A':'Quads · Hamstrings · Calves · Core','Lower B':'Glutes · Hamstrings · Calves · Core','Upper A':'Chest · Back · Arms','Upper B':'Back · Chest · Arms','Legs':'Quads · Hamstrings · Glutes','Chest & Biceps':'Chest · Biceps','Back & Triceps':'Back · Triceps','Shoulders':'Shoulders · Rear delts','Mobility & Abs':'Mobility · Core' })[d.name]||'Strength training';
-$('nextMeta').textContent='Day '+(i+1)+' of '+p.days.length+' · '+d.ex.length+' exercises';
-const warmups=String(d.warmup||'').split(/\s*[·•\n]\s*/).map(s=>s.trim()).filter(Boolean);
-$('nextWarmup').innerHTML=warmups.length?warmups.map(s=>'<li>'+esc(s)+'</li>').join(''):'<li>No warm-up specified for this day.</li>';
+$('nextMeta').textContent=p.name+' · Day '+(i+1)+' of '+p.days.length+' · '+warmupExercises(d).length+' warm-up activities · '+d.ex.length+' exercises';
 }
 function renderActive(){
 const s=state.active,completed=s.exercises.filter(e=>e.done).length;
@@ -111,14 +113,23 @@ $('bar').style.width=(100*completed/s.exercises.length)+'%';
 $('stickyBar').style.width=(100*completed/s.exercises.length)+'%';
 $('stickyText').textContent=s.dayName+' · '+completed+'/'+s.exercises.length;
 $('stickyProgram').textContent=s.programName;
-$('exercises').innerHTML=s.exercises.map((e,i)=>`
-<article class="exercise ${e.done?'done':''}" data-exercise="${i}">
-<div class="exerciseTop">${imageHtml(e.name)}<label class="check"><input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}><span><strong>${esc(e.name)}</strong><small>${e.sets} sets × ${esc(e.reps)}</small></span></label></div>
-<div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
+const exercises=s.exercises||[];
+const renderOne=(e,i)=>{
+ const warm=e.group==='warmup';
+ return `<article class="exercise ${e.done?'done':''} ${warm?'warmupExercise':''}" data-exercise="${i}">
+<div class="exerciseTop">${warm?'<span class="warmupIcon" aria-hidden="true">↗</span>':imageHtml(e.name)}<label class="check"><input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}><span><strong>${esc(e.name)}</strong><small>${warm?'Warm-up · mark complete':e.sets+' sets × '+esc(e.reps)}</small></span></label></div>
+${warm?'':`<div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
 <button type="button" class="subtle" data-index="${i}" data-action="swap">${e.substituted?'Use original':'Use alternative'}</button></div>
 <div class="weightPanel" data-weight-panel="${i}" hidden><label>Max weight (lb, optional)<input type="number" min="0" step="0.5" inputmode="decimal" placeholder="—" data-index="${i}" data-action="weight" value="${esc(e.weight)}"></label></div>
-<small class="muted">Alternative: ${esc(e.substituted?e.originalName||'Original exercise':e.alternative)}</small>
-</article>`).join('');
+<small class="muted">Alternative: ${esc(e.substituted?e.originalName||'Original exercise':e.alternative)}</small>`}
+</article>`;
+};
+const warmList=exercises.map((e,i)=>({e,i})).filter(x=>x.e.group==='warmup');
+const mainList=exercises.map((e,i)=>({e,i})).filter(x=>x.e.group!=='warmup');
+const legacyWarmups=!warmList.length&&s.warmup?String(s.warmup).split(/\s*[·•\n]\s*/).map(x=>x.trim()).filter(Boolean):[];
+const warmHtml=warmList.map(({e,i})=>renderOne(e,i)).join('')+(legacyWarmups.length?'<ul class="legacyWarmupList">'+legacyWarmups.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'');
+$('exercises').innerHTML=(warmHtml?'<section class="workoutExerciseGroup"><h3 class="exerciseGroupTitle">Warm-up</h3>'+warmHtml+'</section>':'')+
+'<section class="workoutExerciseGroup"><h3 class="exerciseGroupTitle">Workout</h3>'+mainList.map(({e,i})=>renderOne(e,i)).join('')+'</section>';
 $('finish').disabled=false;
 }
 function renderHistory(){
@@ -130,7 +141,7 @@ return `<article class="historyItem"><div><strong>${esc(s.dayName)}</strong><sma
 }
 $('start').onclick=()=>{
 const p=program(),idx=(state.next[p.id]||0)%p.days.length,d=p.days[idx];
-state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programVersion:p.version||1,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:d.ex.map(exerciseSeed)};
+state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programVersion:p.version||1,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:[...warmupExercises(d).map((e,i)=>exerciseSeed(e,i,'warmup')),...d.ex.map((e,i)=>exerciseSeed(e,i+warmupExercises(d).length,'main'))]};
 save();render();showSection('active');
 };
 $('exercises').onchange=e=>{
@@ -234,7 +245,7 @@ $('programDaysList').onclick=e=>{
  const i=Number(b.dataset.day),d=browsedProgram.days[i];if(!d)return;
  $('dayTitle').textContent=d.name;
  $('dayMeta').textContent=browsedProgram.name+' · Day '+(i+1)+' of '+browsedProgram.days.length;
- $('dayWarmup').textContent=d.warmup;
+ $('dayWarmup').innerHTML='<ul class="warmupList">'+warmupExercises(d).map(ex=>'<li>'+esc(ex[0])+'</li>').join('')+'</ul>';
  $('dayExercises').innerHTML=d.ex.map(ex=>'<li class="previewItem">'+imageHtml(ex[0])+'<span><strong>'+esc(ex[0])+'</strong><small>'+ex[1]+' sets × '+esc(ex[2])+'</small></span></li>').join('');
  showSection('daySection');
 };
