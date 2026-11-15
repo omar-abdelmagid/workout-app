@@ -57,7 +57,32 @@ const ALTERNATIVE_PHOTO={
  "Cable biceps curl": "High_Cable_Curls",
  "Cable triceps extension": "Cable_Rope_Overhead_Triceps_Extension"
 };
-const photoUrl=name=>(PHOTO[name]||ALTERNATIVE_PHOTO[name])?'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'+encodeURIComponent(PHOTO[name]||ALTERNATIVE_PHOTO[name])+'/0.jpg':'';
+// Verified image IDs from yuhonas/free-exercise-db (exercises/*/0.jpg).
+// Warm-up names retain their original program labels while using the nearest matching movement photo.
+const WARMUP_PHOTO={
+ 'Bike 3 min':'Bicycling_Stationary','Bike 5 min':'Bicycling_Stationary','Easy bike 5 min':'Bicycling_Stationary',
+ 'bike':'Bicycling_Stationary','stationary bike':'Bicycling_Stationary',
+ 'knee-to-chest':'One_Knee_To_Chest',
+ '90/90 hip switches':'90_90_Hamstring',
+ 'glute bridges':'Butt_Lift_Bridge','bridges':'Butt_Lift_Bridge',
+ 'dead bug':'Dead_Bug',
+ 'light leg press':'Leg_Press',
+ 'arm circles':'Arm_Circles','shoulder circles':'Shoulder_Circles',
+ 'band pull-aparts':'Band_Pull_Apart','pull-aparts':'Band_Pull_Apart',
+ 'light row and press':'Seated_Cable_Rows','light chest press':'Leverage_Chest_Press',
+ 'light hip thrust':'Barbell_Hip_Thrust',
+ 'external rotations':'External_Rotation_with_Band','band external rotation':'External_Rotation_with_Band',
+ 'light pulldown':'Close-Grip_Front_Lat_Pulldown','light lateral raises':'Side_Lateral_Raise',
+ 'wall slides':'Shoulder_Stretch',
+ 'gentle pain-free movement':'Dynamic_Back_Stretch'
+};
+const warmupImageId=name=>{
+ const key=String(name||'').trim().toLowerCase().replace(/\\s+/g,' ');
+ if(WARMUP_PHOTO[key])return WARMUP_PHOTO[key];
+ const normalized=key.replace(/^(?:easy|light)\\s+/,'').replace(/\\s+\\d+\\s*(?:min|minutes)$/,'');
+ return WARMUP_PHOTO[normalized]||'';
+};
+const photoUrl=name=>(PHOTO[name]||ALTERNATIVE_PHOTO[name]||warmupImageId(name))?'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'+encodeURIComponent(PHOTO[name]||ALTERNATIVE_PHOTO[name])+'/0.jpg':'';
 const imageHtml=name=>{
  const src=photoUrl(name);
  return '<button type="button" class="exerciseImage" data-image-name="'+esc(name)+'" aria-label="Expand '+esc(name)+' image">'+(src?'<img loading="lazy" src="'+src+'" alt="'+esc(name)+' exercise" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="imageFallback" hidden>Image unavailable</span>':'<span class="imageFallback">Image unavailable</span>')+'</button>';
@@ -117,7 +142,7 @@ const exercises=s.exercises||[];
 const renderOne=(e,i)=>{
  const warm=e.group==='warmup';
  return `<article class="exercise ${e.done?'done':''} ${warm?'warmupExercise':''}" data-exercise="${i}">
-<div class="exerciseTop">${warm?'<span class="warmupIcon" aria-hidden="true">↗</span>':imageHtml(e.name)}<label class="check"><input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}><span><strong>${esc(e.name)}</strong><small>${warm?'Warm-up · mark complete':e.sets+' sets × '+esc(e.reps)}</small></span></label></div>
+<div class="exerciseTop">${imageHtml(e.name)}<label class="check"><input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}><span><strong>${esc(e.name)}</strong><small>${warm?'Warm-up · mark complete':e.sets+' sets × '+esc(e.reps)}</small></span></label></div>
 ${warm?'':`<div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
 <button type="button" class="subtle" data-index="${i}" data-action="swap">${e.substituted?'Use original':'Use alternative'}</button></div>
 <div class="weightPanel" data-weight-panel="${i}" hidden><label>Max weight (lb, optional)<input type="number" min="0" step="0.5" inputmode="decimal" placeholder="—" data-index="${i}" data-action="weight" value="${esc(e.weight)}"></label></div>
