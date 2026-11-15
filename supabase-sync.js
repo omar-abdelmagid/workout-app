@@ -5,6 +5,7 @@ const STORE='workout_tracker_phase1_v1',KEY_STORE='workout_device_key_v1',PROGRA
 const SYNC_STATE_AT='workout_cloud_state_at_v1',STATE_DIRTY='workout_cloud_state_dirty_v1';
 const ENDPOINT='https://yipexqnkvwlvprhzstfr.supabase.co/functions/v1/workout-backup';
 let deviceKey=localStorage.getItem(KEY_STORE)||'',busy=false,connecting=false,timer=null,archiveQueue=[];
+try{archiveQueue=JSON.parse(localStorage.getItem('workout_pending_archives_v1')||'[]')}catch{}
 const read=()=>{try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch{return {}}};
 const message=(text,error=false)=>{
  $('syncStatus').textContent=text;$('homeLoginStatus').textContent=text;
@@ -39,7 +40,7 @@ async function connect(input){
   $('homeDeviceKey').value='';$('syncDeviceKey').value='';
   $('backupDetails').open=false;message('Device connected · backing up…');schedule();
  }catch(e){message('Connection failed: '+e.message,true)}
- finally{connecting=false;buttons.forEach((b,i)=>b.textContent=labels[i]);connecting=false;update()}
+ finally{connecting=false;buttons.forEach((b,i)=>b.textContent=labels[i]);update()}
 }
 $('homeConnect').onclick=()=>connect($('homeDeviceKey').value);
 $('syncConnect').onclick=()=>connect($('syncDeviceKey').value);
@@ -68,7 +69,7 @@ async function sync(){
  try{
   const data=await request(deviceKey);
   if(Array.isArray(data.programs)&&data.programs.length){
-   const cache=data.programs.filter(p=>p.id&&p.days?.length);
+   const cache=data.programs.filter(p=>p.id&&p.days?.length).map(p=>{const pending=archiveQueue.find(a=>a.id===p.id);return pending?{...p,archived:pending.archived}:p});
    if(cache.length){
     const old=localStorage.getItem(PROGRAM_CACHE),updated=JSON.stringify(cache);
     if(old!==updated){localStorage.setItem(PROGRAM_CACHE,updated);window.dispatchEvent(new Event('workout-programs-updated'))}
@@ -91,8 +92,12 @@ async function sync(){
   for(const item of latest.sessions||[])if((remote.has(item.id)||uploaded.has(item.id))&&!item.cloudSynced){item.cloudSynced=true;marked=true}
   if(marked){localStorage.setItem(STORE,JSON.stringify(latest));window.dispatchEvent(new Event('workout-cloud-merged'))}
   if(archiveQueue.length){
-   for(const archive of archiveQueue)await request(deviceKey,'POST',{sessions:[],archive});
-   archiveQueue=[];
+   for(const archive of archiveQueue){
+    await request(deviceKey,'POST',{sessions:[],archive});
+    archiveQueue=archiveQueue.filter(a=>a!==archive);
+    localStorage.setItem('workout_pending_archives_v1',JSON.stringify(archiveQueue));
+   }
+   schedule();
   }
   const current=read();
   if(current.programId){
@@ -110,7 +115,7 @@ async function sync(){
 function schedule(){if(timer)clearTimeout(timer);timer=setTimeout(()=>{timer=null;sync()},800)}
 window.addEventListener('online',schedule);
 window.addEventListener('workout-local-saved',()=>{localStorage.setItem(STATE_DIRTY,'1');update();if(deviceKey)schedule()});
-window.addEventListener('workout-program-archive',e=>{archiveQueue.push(e.detail);if(deviceKey)schedule()});
+window.addEventListener('workout-program-archive',e=>{archiveQueue=archiveQueue.filter(a=>a.id!==e.detail.id);archiveQueue.push(e.detail);localStorage.setItem('workout_pending_archives_v1',JSON.stringify(archiveQueue));if(deviceKey)schedule()});
 window.addEventListener('workout-cloud-merged',update);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&deviceKey)schedule()});
 update();
