@@ -83,7 +83,7 @@ function schedule(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(()
 const savedEmail=localStorage.getItem('workout_supabase_email')||'';
 $('syncEmail').value=savedEmail;$('homeEmail').value=savedEmail;
 async function sendLink(email){
- email=email.trim();if(!/^\S+@\S+\.\S+$/.test(email))throw Error('Enter a valid email address.');
+ email=String(email||'').trim().replace(/[\u200B-\u200D\uFEFF]/g,'');if(!email.includes('@')||!email.split('@')[1]?.includes('.')||/\s/.test(email))throw Error('Enter a valid email address.');
  localStorage.setItem('workout_supabase_email',email);
  $('syncEmail').value=email;$('homeEmail').value=email;
  await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true,email_redirect_to:location.origin+location.pathname}});
