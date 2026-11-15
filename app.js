@@ -165,7 +165,7 @@ function renderHistory(){
 const rows=state.sessions.slice().reverse();
 $('historyList').innerHTML=rows.length?rows.map(s=>{
 const done=s.exercises.filter(e=>e.done).length;
-return `<article class="historyItem"><div><strong>${esc(s.dayName)}</strong><small>${esc(s.programName)} · ${date(s.startedAt)}</small><small>${done}/${s.exercises.length} exercises · ${Math.max(1,Math.round((new Date(s.endedAt)-new Date(s.startedAt))/60000))} min</small></div><button class="subtle" data-history="${esc(s.id)}">Details</button></article>`;
+return `<article class="historyItem"><div><strong>${esc(s.dayName)}</strong><small>${esc(s.programName)} · ${date(s.startedAt)}</small><small>${done}/${s.exercises.length} exercises · ${Math.max(1,Math.round((new Date(s.endedAt)-new Date(s.startedAt))/60000))} min</small></div><div class="historyActions"><button class="subtle" data-history="${esc(s.id)}">Details</button><button class="historyDelete" type="button" data-delete-history="${esc(s.id)}" aria-label="Delete ${esc(s.dayName)} workout">Delete</button></div></article>`;
 }).join(''):'<p class="muted">No completed workouts yet.</p>';
 }
 $('start').onclick=()=>{
@@ -232,6 +232,22 @@ showSection('home');
 };
 $('discard').onclick=()=>{if(!state.active||!confirm('Discard this in-progress workout? This cannot be undone.'))return;state.active=null;save();render();showSection('home');};
 $('historyList').onclick=e=>{
+const deleteButton=e.target.closest('[data-delete-history]');
+if(deleteButton){
+ const id=deleteButton.dataset.deleteHistory;
+ const session=state.sessions.find(x=>x.id===id);
+ if(!session||!confirm('Delete '+session.dayName+' from '+date(session.startedAt)+'? This permanently removes the session from History, Progress, and cloud backup.'))return;
+ // Record the deletion before changing the history so offline/cloud reconciliation cannot restore it.
+ const key='workout_pending_session_deletions_v1';
+ let pending=[];try{pending=JSON.parse(localStorage.getItem(key)||'[]')}catch{}
+ if(!Array.isArray(pending))pending=[];
+ if(!pending.includes(id))pending.push(id);
+ try{localStorage.setItem(key,JSON.stringify(pending))}catch{alert('Unable to save deletion request. Nothing was deleted.');return;}
+ state.sessions=state.sessions.filter(x=>x.id!==id);
+ save();render();
+ window.dispatchEvent(new Event('workout-session-delete-pending'));
+ return;
+}
 const b=e.target.closest('[data-history]');if(!b)return;
 const s=state.sessions.find(x=>x.id===b.dataset.history);if(!s)return;
 $('detailsTitle').textContent=s.dayName+' · '+date(s.startedAt);

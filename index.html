@@ -49,6 +49,10 @@
 .progressEmpty{background:#fafafa;border:1px solid #e8e8e8;border-radius:16px;padding:22px;margin:20px 0}
 .progressEmpty h3{margin:0 0 8px}
 .progressEmpty p{color:#666;line-height:1.6;font-size:14px;margin:0}
+.historyActions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+.historyDelete{background:transparent;color:#a1322a;border:1px solid #e6b3ae;border-radius:9px;font-size:12px;padding:8px 12px;min-height:36px}
+.historyDelete:focus-visible{outline:3px solid #e99b93;outline-offset:2px}
+.historyItem>div:first-child{min-width:0}
 </style></head>
 <body><header class="mainHeader"><div class="eyebrow">MY WORKOUTS</div></header>
 <section id="home" class="home"><div id="workoutSuccess" class="workoutSuccess" role="status" aria-live="polite" hidden><span class="workoutSuccessIcon" aria-hidden="true">✓</span><div><strong>Workout completed!</strong><p id="workoutSuccessText">Your workout has been saved.</p></div></div><h1>Ready to train?</h1><div class="homeHero"><div class="eyebrow">ACTIVE PROGRAM</div><h2 id="homeProgram">4-Day Hypertrophy</h2><div class="homeNext"><div><h2 id="homeNext">Next: Lower A</h2><p id="homeFocus" class="muted">Quads · Hamstrings · Calves · Core</p></div><span aria-hidden="true" class="dumbbellIcon">♧</span></div><p class="muted">Estimated duration: 55–60 min</p></div><button id="today" class="todayButton">▶ &nbsp; Today's Workout</button><div class="homeTiles"><button id="homeHistory"><span>▣</span>History</button><button id="homePrograms"><span>▤</span>Programs</button><button id="homeProgress"><span>▥</span>Progress</button></div><div id="homeLogin" class="homeLogin" hidden><strong>Enable automatic backup</strong><p class="muted">Enter your private device key once. No email or account required.</p><label for="homeDeviceKey">Device key</label><input id="homeDeviceKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your device key"><button id="homeConnect" type="button">Connect backup</button><p id="homeLoginStatus" class="muted" role="status"></p></div></section>
@@ -67,4 +71,4 @@
 
 <dialog id="imageDialog" class="imageDialog"><div class="imageDialogHead"><strong id="imageTitle"></strong><button id="closeImage" aria-label="Close image">✕</button></div><img id="imageLarge" alt="Expanded exercise demonstration"><p id="imageMissing" hidden>Image unavailable for this exercise.</p></dialog>
 <dialog id="details"><h2 id="detailsTitle"></h2><div id="detailsBody"></div><button id="closeDetails">Close</button></dialog>
-<script src="./progress.js?v=22" defer></script><script src="./app.js?v=22" defer></script><script src="./supabase-sync.js?v=22" defer></script></body></html>
+<script src="./progress.js?v=23" defer></script><script src="./app.js?v=23" defer></script><script src="./supabase-sync.js?v=23" defer></script></body></html>

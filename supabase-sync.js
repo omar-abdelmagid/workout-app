@@ -4,7 +4,9 @@ const $=id=>document.getElementById(id);
 const STORE='workout_tracker_phase1_v1',KEY_STORE='workout_device_key_v1',PROGRAM_CACHE='workout_programs_cache_v1';
 const SYNC_STATE_AT='workout_cloud_state_at_v1',STATE_DIRTY='workout_cloud_state_dirty_v1';
 const ENDPOINT='https://yipexqnkvwlvprhzstfr.supabase.co/functions/v1/workout-backup';
-let deviceKey=localStorage.getItem(KEY_STORE)||'',busy=false,connecting=false,timer=null,archiveQueue=[];
+let deviceKey=localStorage.getItem(KEY_STORE)||'',busy=false,connecting=false,timer=null,archiveQueue=[],deleteQueue=[];
+const DELETE_QUEUE='workout_pending_session_deletions_v1';
+try{deleteQueue=JSON.parse(localStorage.getItem(DELETE_QUEUE)||'[]');if(!Array.isArray(deleteQueue))deleteQueue=[]}catch{deleteQueue=[]}
 try{archiveQueue=JSON.parse(localStorage.getItem('workout_pending_archives_v1')||'[]')}catch{}
 const read=()=>{try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch{return {}}};
 const message=(text,error=false)=>{
@@ -75,16 +77,25 @@ async function sync(){
     if(old!==updated){localStorage.setItem(PROGRAM_CACHE,updated);window.dispatchEvent(new Event('workout-programs-updated'))}
    }
   }
-  const remote=new Map((data.sessions||[]).map(r=>[r.id,r.payload]));
-  const local=read(),sessions=Array.isArray(local.sessions)?local.sessions:[];
-  const known=new Set(sessions.map(s=>s.id));let recovered=0,changed=false;
+  // Server tombstones prevent deleted workouts from reappearing on other devices.
+  const deletedIds=new Set([...(data.deletedSessionIds||[]),...deleteQueue]);
+  const remote=new Map((data.sessions||[]).filter(r=>!deletedIds.has(r.id)).map(r=>[r.id,r.payload]));
+  const local=read(),sessions=Array.isArray(local.sessions)?local.sessions.filter(s=>!deletedIds.has(s.id)):[];
+  const deletedLocally=Array.isArray(local.sessions)&&sessions.length!==local.sessions.length;
+  const known=new Set(sessions.map(s=>s.id));let recovered=0,changed=deletedLocally;
   for(const [id,item] of remote)if(!known.has(id)&&item?.id===id&&item.endedAt&&Array.isArray(item.exercises)){
    sessions.push({...item,cloudSynced:true});known.add(id);recovered++;changed=true;
   }
   for(const item of sessions)if(remote.has(item.id)&&!item.cloudSynced){item.cloudSynced=true;changed=true}
   if(reconcileRemoteState(data.appState,local))changed=true;
   if(changed){local.sessions=sessions;localStorage.setItem(STORE,JSON.stringify(local));window.dispatchEvent(new Event('workout-cloud-merged'))}
-  const pending=sessions.filter(x=>x.id&&x.endedAt&&!remote.has(x.id));
+  // Persist deletion requests before any session uploads.
+  for(const id of [...deleteQueue]){
+   await request(deviceKey,'POST',{sessions:[],deleteSessionId:id});
+   deleteQueue=deleteQueue.filter(x=>x!==id);
+   localStorage.setItem(DELETE_QUEUE,JSON.stringify(deleteQueue));
+  }
+  const pending=sessions.filter(x=>x.id&&x.endedAt&&!deletedIds.has(x.id)&&!remote.has(x.id));
   for(let i=0;i<pending.length;i+=100)await request(deviceKey,'POST',{sessions:pending.slice(i,i+100).map(({cloudSynced,...rest})=>rest)});
   // If the user changed the active workout while network requests ran, take the newest local snapshot.
   const latest=read();let marked=false;
@@ -116,6 +127,10 @@ function schedule(){if(timer)clearTimeout(timer);timer=setTimeout(()=>{timer=nul
 window.addEventListener('online',schedule);
 window.addEventListener('workout-local-saved',()=>{localStorage.setItem(STATE_DIRTY,'1');update();if(deviceKey)schedule()});
 window.addEventListener('workout-program-archive',e=>{archiveQueue=archiveQueue.filter(a=>a.id!==e.detail.id);archiveQueue.push(e.detail);localStorage.setItem('workout_pending_archives_v1',JSON.stringify(archiveQueue));if(deviceKey)schedule()});
+window.addEventListener('workout-session-delete-pending',()=>{
+ try{const q=JSON.parse(localStorage.getItem(DELETE_QUEUE)||'[]');deleteQueue=Array.isArray(q)?q:[]}catch{}
+ if(deviceKey)schedule();update();
+});
 window.addEventListener('workout-cloud-merged',update);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&deviceKey)schedule()});
 update();
