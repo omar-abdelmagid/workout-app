@@ -1,0 +1,78 @@
+/* iPhone app shell; exercise cards and charts keep their original design. */
+:root {
+  --f7-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --f7-theme-color: #171717;
+  --f7-page-bg-color: #f5f5f7;
+  --f7-toolbar-height: 64px;
+  --f7-tabbar-height: 64px;
+  --f7-sheet-border-radius: 26px;
+  --f7-dialog-button-text-color: #171717;
+}
+html, body { width: 100%; height: 100%; max-width: none; margin: 0; padding: 0; background: #f5f5f7; color: #171717; }
+body { font-family: var(--f7-font-family); }
+#app { height: 100%; }
+.views { height: 100%; }
+.page { background: #f5f5f7; }
+.page-content { padding: calc(12px + var(--f7-safe-area-top, 0px)) 20px calc(90px + var(--f7-safe-area-bottom, 0px)); scroll-padding-bottom: 100px; }
+.page-content > section { max-width: 720px; margin: 0 auto; }
+.page-content > section.card { background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 0; }
+.page-content > section h2 { letter-spacing: -.6px; }
+.page-content > section > h2 { font-size: 32px; line-height: 1.15; margin: 20px 0 12px; }
+.page-content > section > .backButton { display: inline-flex; align-items: center; min-height: 44px; font-size: 17px; font-weight: 500; color: #555; }
+.app-tabbar { position: absolute; bottom: 0; left: 0; width: 100%; z-index: 500; height: calc(64px + var(--f7-safe-area-bottom, 0px)); padding-bottom: var(--f7-safe-area-bottom, 0px); background: rgba(250,250,252,.93); border-top: 1px solid #00000012; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+.app-tabbar .toolbar-inner { height: 64px; max-width: 760px; margin: auto; padding: 0 12px; }
+.app-tabbar button { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; min-width: 44px; min-height: 52px; gap: 4px; padding: 5px; border-radius: 12px; color: #85858b; background: transparent; font-size: 10px; font-weight: 600; line-height: 1.1; }
+.app-tabbar button[aria-current] { color: #171717; }
+.app-tabbar button:active { background: #e9e9ed; }
+.app-tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible { outline: 3px solid #7373df; outline-offset: 3px; }
+button.primary { background: #171717; color: white; min-height: 54px; border-radius: 16px; font-size: 17px; }
+button.subtle { color: #242424; background: #ebebef; min-height: 44px; }
+header.mainHeader { padding: 18px 0 4px; }
+.home h1 { font-size: 36px; margin: 20px 0 30px; }
+.homeHero { background: #fff; border-radius: 24px; padding: 24px; margin-bottom: 20px; box-shadow: 0 3px 18px #00000003; }
+.homeHero h2 { margin: 12px 0; }
+.homeNext { border-top: 1px solid #efeff2; padding-top: 20px; margin-top: 20px; }
+.homeNext h2 { font-size: 20px; }
+.homeHero > p { font-size: 13px; margin-bottom: 0; }
+.todayButton { min-height: 58px; font-size: 17px; border-radius: 18px; }
+.programTile, .dayTile { border: 0; box-shadow: 0 2px 12px #00000003; }
+.dayTile { min-height: 88px; border-radius: 18px; }
+.programTile { min-height: 180px; }
+.programTopBar { margin-bottom: 12px; }
+.exercise { background: #fff; padding: 16px; border: 0; border-radius: 20px; margin: 12px 0; }
+.exercise.warmupExercise { background: #edf3ee; }
+.exerciseTop { gap: 12px; }
+.exerciseImage { width: 106px; height: 112px; flex-basis: 106px; border: 0; border-radius: 14px; }
+.check { flex-direction: row-reverse; justify-content: space-between; gap: 10px; }
+.check input { width: 25px; height: 25px; min-width: 25px; margin: 0; }
+.check strong { font-size: 16px; line-height: 1.35; }
+.fields { margin: 16px 0 8px; gap: 8px; }
+.fields button { font-size: 12px; flex: 1; padding: 10px 8px; }
+.exercise > small.muted { font-size: 11px; }
+.stickyProgress { top: 0; background: rgba(250,250,252,.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid #e5e5ea; box-shadow: 0 5px 16px #00000008; margin-bottom: 20px; }
+.stickyProgress small { color: #68686f; }
+.progress div { background: #171717; }
+.historyItem { padding: 18px 0; }
+.progressStat, .progressEmpty { background: #fff; border: 0; border-radius: 20px; }
+.progressPanel { border-color: #e4e4e9; }
+.homeLogin, .backupDetailsContent { background: #fff; }
+.backupDetailsContent { z-index: 30; }
+.workout-sheet { height: auto; max-height: 88dvh; border-radius: 26px 26px 0 0; background: #fff; color: #171717; overflow: hidden; }
+.workout-sheet .sheet-modal-inner { display: flex; flex-direction: column; max-height: 88dvh; }
+.sheet-handle { width: 100%; min-height: 26px; flex-shrink: 0; position: relative; touch-action: none; }
+.sheet-handle::after { content: ''; position: absolute; top: 10px; left: calc(50% - 18px); width: 36px; height: 5px; border-radius: 4px; background: #d1d1d6; }
+.sheet-content { overflow-y: auto; overscroll-behavior: contain; padding: 4px 24px calc(24px + var(--f7-safe-area-bottom, 0px)); }
+.sheet-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sheet-heading h2 { font-size: 25px; }
+.sheet-content label { display: block; margin-bottom: 8px; }
+#sheetWeight { width: 100%; min-height: 60px; background: #f2f2f7; border: 0; border-radius: 14px; font-size: 28px; padding: 12px 16px; margin-bottom: 12px; }
+#imageDialog img { display: block; width: 100%; max-height: 62dvh; object-fit: contain; }
+.imageDialogHead { align-items: flex-start; }
+.imageDialogHead button, #closeDetails { min-height: 44px; background: #efeff3; color: #171717; }
+#detailsTitle { font-size: 23px; margin: 8px 0 18px; }
+#detailsBody p { padding: 12px 0; margin: 0; border-bottom: 1px solid #efeff3; }
+#closeDetails { width: 100%; margin-top: 20px; }
+@media (max-width: 360px) { .page-content { padding-left: 14px; padding-right: 14px; } .exerciseImage { width: 86px; height: 100px; flex-basis: 86px; } .check strong { font-size: 14px; } .homeHero { padding: 20px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
