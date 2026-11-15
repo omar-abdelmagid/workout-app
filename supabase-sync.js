@@ -1,0 +1,130 @@
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const STORE='workout_tracker_phase1_v1',CONFIG='workout_supabase_config_v1',AUTH='workout_supabase_auth_v1';
+const state=()=>JSON.parse(localStorage.getItem(STORE)||'{}');
+const config=()=>{try{return JSON.parse(localStorage.getItem(CONFIG)||'{}')}catch{return {}}};
+let auth=null,busy=false,refreshPromise=null,syncTimer=null;
+try{auth=JSON.parse(localStorage.getItem(AUTH)||'null')}catch{}
+const message=(text,error=false)=>{$('syncStatus').textContent=text;$('syncStatus').style.color=error?'#a22':'#555'};
+const persistAuth=value=>{auth=value;if(value)localStorage.setItem(AUTH,JSON.stringify(value));else localStorage.removeItem(AUTH);update()};
+const validConfig=()=>{const c=config();return /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(c.url||'')&&/^(sb_publishable_|eyJ)/.test(c.key||'')};
+const endpoint=()=>config().url.replace(/\/$/,'');
+function update(){
+ const s=state(),sessions=s.sessions||[];
+ $('syncCount').textContent=sessions.length?sessions.filter(x=>x.cloudSynced).length+' of '+sessions.length+' completed workouts backed up':'No completed workouts yet';
+ $('syncUser').textContent=auth?.user?.email||'Connected';
+ $('syncAccount').hidden=!auth;
+ $('syncAuth').hidden=!!auth;
+ $('syncNow').disabled=busy||!auth||!validConfig();
+ $('syncLogin').disabled=busy;
+}
+async function request(path,{method='GET',body,token,prefer}={}){
+ const c=config();
+ const res=await fetch(endpoint()+path,{method,headers:{apikey:c.key,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(prefer?{Prefer:prefer}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+ const raw=await res.text();let data;try{data=raw?JSON.parse(raw):null}catch{data=null}
+ if(!res.ok)throw Error(data?.msg||data?.error_description||data?.message||data?.error||'Cloud request failed ('+res.status+')');
+ return data;
+}
+function acceptAuth(data){
+ if(!data?.access_token||!data?.refresh_token)throw Error('Sign-in did not return a session.');
+ persistAuth({access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Math.floor(Date.now()/1000)+Number(data.expires_in||3600),user:data.user||auth?.user});
+}
+async function token(){
+ if(!auth)return null;
+ if(Date.now()/1000 < (auth.expires_at||0)-90)return auth.access_token;
+ if(!refreshPromise)refreshPromise=(async()=>{
+  try{const result=await request('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:auth.refresh_token}});acceptAuth(result);return auth.access_token}
+  catch(e){persistAuth(null);message('Sign-in expired. Request a new email link.',true);throw e}
+ })().finally(()=>{refreshPromise=null});
+ return refreshPromise;
+}
+async function rest(path,options={}){
+ const t=await token();if(!t)throw Error('Sign in to enable cloud backup.');
+ return request('/rest/v1/'+path,{...options,token:t});
+}
+async function sync(){
+ if(busy||!auth||!validConfig()||!navigator.onLine)return;
+ busy=true;update();message('Backing up workouts…');
+ try{
+  const user=auth.user?.id;if(!user)throw Error('Missing account identity. Please sign in again.');
+  // Pull before pushing: avoids overwriting another device's completed sessions.
+  const rows=await rest('workout_sessions?select=id,payload&order=created_at.asc&limit=10000');
+  const remote=new Map(rows.map(r=>[r.id,r.payload]));
+  const local=state();local.sessions=local.sessions||[];
+  const known=new Set(local.sessions.map(x=>x.id));
+  let recovered=0;
+  for(const [id,item] of remote){if(!known.has(id)&&item&&item.id===id&&item.endedAt&&Array.isArray(item.exercises)){local.sessions.push({...item,cloudSynced:true});known.add(id);recovered++}}
+  // Preserve active workout and local program preference. Only merge completed history.
+  for(const item of local.sessions)if(remote.has(item.id))item.cloudSynced=true;
+  localStorage.setItem(STORE,JSON.stringify(local));
+  window.dispatchEvent(new Event('workout-cloud-merged'));
+  const pending=local.sessions.filter(x=>x.id&&x.endedAt&&!remote.has(x.id));
+  if(pending.length){
+   await rest('workout_sessions?on_conflict=user_id,id',{method:'POST',prefer:'resolution=ignore-duplicates,return=minimal',body:pending.map(x=>({id:x.id,user_id:user,payload:{...x,cloudSynced:undefined}}))});
+  }
+  const check=await rest('workout_sessions?select=id&limit=10000');
+  const synced=new Set(check.map(x=>x.id));
+  const latest=state();
+  for(const item of latest.sessions||[])if(synced.has(item.id))item.cloudSynced=true;
+  // Do not overwrite changes to the current active workout.
+  localStorage.setItem(STORE,JSON.stringify(latest));
+  window.dispatchEvent(new Event('workout-cloud-merged'));
+  const remaining=(latest.sessions||[]).filter(x=>x.endedAt&&!x.cloudSynced).length;
+  message(remaining?remaining+' workouts pending. Will retry when connected.':'Cloud backup up to date ✓'+(recovered?' · '+recovered+' restored':''));
+ }catch(e){message('Cloud backup pending: '+e.message,true)}
+ finally{busy=false;update()}
+}
+function schedule(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(()=>{syncTimer=null;sync()},1200)}
+$('syncUrl').value=config().url||'';
+$('syncKey').value=config().key||'';
+$('syncEmail').value=localStorage.getItem('workout_supabase_email')||'';
+function storeConfig(){
+ const url=$('syncUrl').value.trim().replace(/\/$/,'');
+ const key=$('syncKey').value.trim();
+ if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!/^(sb_publishable_|eyJ)/.test(key))throw Error('Enter your Supabase project URL and publishable key.');
+ const before=config();
+ if(auth&&(before.url!==url||before.key!==key))persistAuth(null);
+ localStorage.setItem(CONFIG,JSON.stringify({url,key}));
+}
+$('syncLogin').onclick=async()=>{
+ try{
+  storeConfig();const email=$('syncEmail').value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(email))throw Error('Enter a valid email address.');
+  localStorage.setItem('workout_supabase_email',email);
+  const redirect=location.origin+location.pathname;
+  await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true,email_redirect_to:redirect}});
+  message('Check your email and open the sign-in link on this iPhone.');
+ }catch(e){message(e.message,true)}
+};
+$('syncNow').onclick=sync;
+$('syncLogout').onclick=async()=>{
+ try{const t=await token();if(t)await request('/auth/v1/logout',{method:'POST',token:t})}catch{}
+ persistAuth(null);message('Signed out. Local workouts are still saved.');
+};
+async function consumeRedirect(){
+ const hash=new URLSearchParams(location.hash.slice(1));
+ const query=new URLSearchParams(location.search);
+ try{
+  if(hash.get('error')||query.get('error'))throw Error(hash.get('error_description')||query.get('error_description')||'Sign-in failed');
+  if(hash.get('access_token')&&hash.get('refresh_token')){
+   const jwt=hash.get('access_token');
+   const user=await request('/auth/v1/user',{token:jwt});
+   acceptAuth({access_token:jwt,refresh_token:hash.get('refresh_token'),expires_in:Number(hash.get('expires_in')||3600),user});
+  }else if(query.get('code')){
+   const verifier=sessionStorage.getItem('workout_supabase_pkce_verifier');
+   if(!verifier)throw Error('Open the sign-in link in the same browser where you requested it, or use an email OTP flow.');
+   const data=await request('/auth/v1/token?grant_type=pkce',{method:'POST',body:{auth_code:query.get('code'),code_verifier:verifier}});
+   acceptAuth(data);sessionStorage.removeItem('workout_supabase_pkce_verifier');
+  }else return;
+  history.replaceState(null,'',location.pathname);
+  message('Signed in. Starting automatic backup.');schedule();
+ }catch(e){message('Sign-in failed: '+e.message,true)}
+}
+window.addEventListener('online',schedule);
+window.addEventListener('workout-local-saved',()=>{update();if(auth)schedule()});
+window.addEventListener('workout-cloud-merged',update);
+window.addEventListener('visibilitychange',()=>{if(!document.hidden&&auth)schedule()});
+update();
+consumeRedirect().then(async()=>{if(auth){try{await token();schedule()}catch{}}else if(validConfig())message('Sign in once to enable automatic cloud backup.');else message('One-time setup required: enter your Supabase project URL and publishable key.')});
+})();
