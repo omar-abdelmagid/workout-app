@@ -60,7 +60,7 @@ const ALTERNATIVE_PHOTO={
 // Verified image IDs from yuhonas/free-exercise-db (exercises/*/0.jpg).
 // Warm-up names retain their original program labels while using the nearest matching movement photo.
 const WARMUP_PHOTO={
- 'Bike 3 min':'Bicycling_Stationary','Bike 5 min':'Bicycling_Stationary','Easy bike 5 min':'Bicycling_Stationary',
+ 'bike 3 min':'Bicycling_Stationary','bike 5 min':'Bicycling_Stationary','easy bike 5 min':'Bicycling_Stationary',
  'bike':'Bicycling_Stationary','stationary bike':'Bicycling_Stationary',
  'knee-to-chest':'One_Knee_To_Chest',
  '90/90 hip switches':'90_90_Hamstring',
@@ -77,12 +77,15 @@ const WARMUP_PHOTO={
  'gentle pain-free movement':'Dynamic_Back_Stretch'
 };
 const warmupImageId=name=>{
- const key=String(name||'').trim().toLowerCase().replace(/\\s+/g,' ');
+ const key=String(name||'').trim().toLowerCase().replace(/\s+/g,' ');
  if(WARMUP_PHOTO[key])return WARMUP_PHOTO[key];
- const normalized=key.replace(/^(?:easy|light)\\s+/,'').replace(/\\s+\\d+\\s*(?:min|minutes)$/,'');
+ const normalized=key.replace(/^(?:easy|light)\s+/,'').replace(/\s+\\d+\s*(?:min|minutes)$/,'');
  return WARMUP_PHOTO[normalized]||'';
 };
-const photoUrl=name=>(PHOTO[name]||ALTERNATIVE_PHOTO[name]||warmupImageId(name))?'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'+encodeURIComponent(PHOTO[name]||ALTERNATIVE_PHOTO[name])+'/0.jpg':'';
+const photoUrl=name=>{
+ const id=PHOTO[name]||ALTERNATIVE_PHOTO[name]||warmupImageId(name);
+ return id?'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'+encodeURIComponent(id)+'/0.jpg':'';
+};
 const imageHtml=name=>{
  const src=photoUrl(name);
  return '<button type="button" class="exerciseImage" data-image-name="'+esc(name)+'" aria-label="Expand '+esc(name)+' image">'+(src?'<img loading="lazy" src="'+src+'" alt="'+esc(name)+' exercise" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="imageFallback" hidden>Image unavailable</span>':'<span class="imageFallback">Image unavailable</span>')+'</button>';
