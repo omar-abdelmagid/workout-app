@@ -30,13 +30,10 @@ const day=()=>program().days[state.next[program().id]%program().days.length];
 const allDone=s=>s.exercises.every(e=>e.done);
 function exerciseSeed(e,i){return {id:i,name:e[0],sets:e[1],reps:e[2],alternative:e[3],done:false,weight:'',substituted:false};}
 function render(){
-$('program').value=state.programId;
+
 $('programName').textContent=program().name;
 $('homeProgram').textContent=program().name;
-$('stickyProgress').hidden=!state.active;
-$('active').hidden=!state.active;
-$('home').hidden=!!state.active;
-$('upcoming').hidden=!!state.active;
+// Navigation visibility is owned by showSection, not by data rendering.
 $('navHistory').textContent='History ('+state.sessions.length+')';
 if(state.active) renderActive(); else renderUpcoming();
 renderHistory();
@@ -76,10 +73,6 @@ const done=s.exercises.filter(e=>e.done).length;
 return `<article class="historyItem"><div><strong>${esc(s.dayName)}</strong><small>${esc(s.programName)} · ${date(s.startedAt)}</small><small>${done}/${s.exercises.length} exercises · ${Math.max(1,Math.round((new Date(s.endedAt)-new Date(s.startedAt))/60000))} min</small></div><button class="subtle" data-history="${esc(s.id)}">Details</button></article>`;
 }).join(''):'<p class="muted">No completed workouts yet.</p>';
 }
-$('program').onchange=e=>{
-if(state.active){e.target.value=state.programId;alert('Finish or discard the active workout before changing programs.');return;}
-state.programId=e.target.value;save();render();
-};
 $('start').onclick=()=>{
 const p=program(),idx=(state.next[p.id]||0)%p.days.length,d=p.days[idx];
 state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:d.ex.map(exerciseSeed)};
@@ -118,7 +111,14 @@ else{ex.name=ex.originalName;ex.substituted=false;}
 save();
 const card=b.closest('.exercise');
 const picture=card.querySelector('.exerciseImage');
-picture.outerHTML=imageHtml(ex.name);
+const pictureImg=picture.querySelector('img');
+const newSrc=photoUrl(ex.name);
+picture.dataset.imageName=ex.name;
+picture.setAttribute('aria-label','Expand '+ex.name+' image');
+if(pictureImg){
+ if(newSrc){if(pictureImg.getAttribute('src')!==newSrc)pictureImg.src=newSrc;pictureImg.alt=ex.name+' exercise';pictureImg.hidden=false;const fallback=picture.querySelector('.imageFallback');if(fallback)fallback.hidden=true;}
+ else{pictureImg.hidden=true;const fallback=picture.querySelector('.imageFallback');if(fallback){fallback.hidden=false;fallback.textContent='Image unavailable';}}
+}else if(newSrc){picture.innerHTML='<img loading="lazy" src="'+newSrc+'" alt="'+esc(ex.name)+' exercise" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="imageFallback" hidden>Image unavailable</span>';}
 card.querySelector('.check strong').textContent=ex.name;
 card.querySelector('[data-action="swap"]').textContent=ex.substituted?'Use original':'Use alternative';
 card.querySelector('small.muted').textContent='Alternative: '+(ex.substituted?(ex.originalName||'Original exercise'):ex.alternative);
@@ -181,12 +181,11 @@ $('programDaysList').onclick=e=>{
 };
 $('selectProgram').onclick=()=>{
  if(!browsedProgram||state.active)return;
- state.programId=browsedProgram.id;save();render();renderProgramDays(browsedProgram);renderProgramGrid();
+ state.programId=browsedProgram.id;save();render();renderProgramDays(browsedProgram);renderProgramGrid();showSection('programDaysSection');
 };
 
 $('backProgress').onclick=()=>showSection('home');
 $('today').onclick=()=>{showSection('upcoming');$('backHome').hidden=false;};
-$('settings').onclick=()=>{$('programDialog').showModal();};
 function showSection(id){
  if(state.active && id==='home')id='active';
  for(const section of ['home','upcoming','active','historySection','programSection','programDaysSection','daySection','progressSection'])$(section).hidden=section!==id;
@@ -205,9 +204,6 @@ document.addEventListener('click',event=>{
 $('closeImage').onclick=()=>$('imageDialog').close();
 $('imageLarge').onerror=()=>{$('imageLarge').hidden=true;$('imageMissing').hidden=false;};
 
-$('browse').onclick=()=>{renderProgramGrid();showSection('programSection');};
-$('closePrograms').onclick=()=>$('programDialog').close();
-$('program').onchange=(()=>{const prior=$('program').onchange;return e=>{prior(e);if(!state.active){$('programDialog').close();renderProgramGrid();showSection('home');}};})();
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 render();
