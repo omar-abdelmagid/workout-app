@@ -79,7 +79,7 @@ const WARMUP_PHOTO={
 const warmupImageId=name=>{
  const key=String(name||'').trim().toLowerCase().replace(/\s+/g,' ');
  if(WARMUP_PHOTO[key])return WARMUP_PHOTO[key];
- const normalized=key.replace(/^(?:easy|light)\s+/,'').replace(/\s+\\d+\s*(?:min|minutes)$/,'');
+ const normalized=key.replace(/^(?:easy|light)\s+/,'').replace(/\s+\d+\s*(?:min|minutes)$/,'');
  return WARMUP_PHOTO[normalized]||'';
 };
 const photoUrl=name=>{
