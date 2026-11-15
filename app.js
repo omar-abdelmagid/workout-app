@@ -1,6 +1,9 @@
 (() => {
 'use strict';
-const PROGRAMS=[{"id":"four","name":"4-Day Hypertrophy","days":[{"name":"Lower A","warmup":"Bike 3 min · knee-to-chest · 90/90 hip switches · glute bridges · dead bug · light leg press","ex":[["Leg Press",3,"8–12","Hack squat machine"],["Single-Leg Leg Press",2,"10–12/leg","Supported step-up"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Leg Extension",2,"12–15","Terminal knee extension"],["Standing Calf Raise",3,"12–15","Seated calf raise"],["Dead Bug",2,"8/side","Heel taps"]]},{"name":"Upper A","warmup":"Bike 3 min · arm circles · band pull-aparts · light row and press","ex":[["Dumbbell Bench Press",3,"8–10","Machine chest press"],["Seated Cable Row",3,"8–12","Chest-supported row"],["Incline Machine Chest Press",2,"10–12","Incline dumbbell press"],["Neutral-Grip Lat Pulldown",3,"10–12","Assisted neutral-grip pull-up"],["Cable Lateral Raise",2,"12–15","Dumbbell lateral raise"],["Cable Biceps Curl",2,"10–12","Dumbbell curl"],["Triceps Pressdown",3,"10–15","Rope pressdown"]]},{"name":"Lower B","warmup":"Bike 3 min · knee-to-chest · 90/90 hip switches · bridges · dead bug · light hip thrust","ex":[["Hip Thrust Machine",3,"8–12","Glute bridge"],["Low Step-Up",3,"8–10/leg","Single-leg leg press"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Seated Hip Abduction",2,"12–15","Cable hip abduction"],["Seated Calf Raise",3,"12–15","Standing calf raise"],["Suitcase Carry",2,"20–30 sec/side","Pallof hold"]]},{"name":"Upper B","warmup":"Bike 3 min · arm circles · pull-aparts · external rotations · light pulldown","ex":[["Neutral-Grip Lat Pulldown",3,"8–12","Assisted pull-up"],["Machine Chest Press",3,"8–12","Dumbbell bench press"],["Seated Cable Row",3,"10–12","Chest-supported row"],["Reverse Pec Deck",2,"12–15","Face pull"],["Dumbbell Biceps Curl",3,"10–12","Cable curl"],["Cable Triceps Extension",3,"10–15","Triceps pressdown"],["Pallof Press",2,"10–12/side","Dead bug"]]}]},{"id":"five","name":"5-Day Split","days":[{"name":"Chest & Biceps","warmup":"Bike 3 min · shoulder circles · band pull-aparts · light chest press","ex":[["Dumbbell Bench Press",3,"8–10","Machine chest press"],["Incline Machine Press",3,"10–12","Incline dumbbell press"],["Cable Fly",2,"12–15","Pec deck"],["Cable Biceps Curl",3,"10–12","Dumbbell curl"],["Hammer Curl",3,"10–12","Rope hammer curl"]]},{"name":"Legs","warmup":"Bike 5 min · 90/90 hip switches · glute bridges · light leg press","ex":[["Leg Press",3,"8–12","Hack squat machine"],["Single-Leg Leg Press",2,"10/leg","Low step-up"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Hip Thrust",3,"10","Glute bridge"],["Calf Raise",3,"12–15","Seated calf raise"]]},{"name":"Back & Triceps","warmup":"Bike 3 min · band pull-aparts · light pulldown and row","ex":[["Neutral-Grip Lat Pulldown",3,"8–12","Assisted pull-up"],["Seated Cable Row",3,"10–12","Chest-supported row"],["Chest-Supported Row",2,"10–12","Machine row"],["Triceps Pressdown",3,"10–15","Rope pressdown"],["Cable Triceps Extension",3,"10–12","Overhead rope extension"]]},{"name":"Shoulders","warmup":"Bike 3 min · wall slides · band external rotation · light lateral raises","ex":[["Supported Machine Shoulder Press",2,"8–10","Cable scaption"],["Cable Lateral Raise",3,"12–15","Dumbbell lateral raise"],["Reverse Pec Deck",3,"12–15","Face pull"],["Face Pull",2,"12–15","Reverse cable fly"],["Cable Scaption",2,"12","Light dumbbell scaption"]]},{"name":"Mobility & Abs","warmup":"Easy bike 5 min · gentle pain-free movement","ex":[["Supported 90/90 Hip Switches",2,"60 sec","Seated hip rotations"],["Hip Flexor Stretch",2,"45 sec/side","Half-kneeling hip flexor stretch"],["Knee-to-Chest",2,"45 sec/side","Supine knee hug"],["Hamstring Mobility",2,"45 sec/side","Supine hamstring stretch"],["Thoracic Rotation",2,"8/side","Open book"],["Wall Slides",2,"10","Band external rotation"],["Dead Bug",2,"8/side","Heel taps"],["Bird Dog",2,"8/side","Heel taps"]]}]}];
+const DEFAULT_PROGRAMS=[{"id":"four","name":"4-Day Hypertrophy","days":[{"name":"Lower A","warmup":"Bike 3 min · knee-to-chest · 90/90 hip switches · glute bridges · dead bug · light leg press","ex":[["Leg Press",3,"8–12","Hack squat machine"],["Single-Leg Leg Press",2,"10–12/leg","Supported step-up"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Leg Extension",2,"12–15","Terminal knee extension"],["Standing Calf Raise",3,"12–15","Seated calf raise"],["Dead Bug",2,"8/side","Heel taps"]]},{"name":"Upper A","warmup":"Bike 3 min · arm circles · band pull-aparts · light row and press","ex":[["Dumbbell Bench Press",3,"8–10","Machine chest press"],["Seated Cable Row",3,"8–12","Chest-supported row"],["Incline Machine Chest Press",2,"10–12","Incline dumbbell press"],["Neutral-Grip Lat Pulldown",3,"10–12","Assisted neutral-grip pull-up"],["Cable Lateral Raise",2,"12–15","Dumbbell lateral raise"],["Cable Biceps Curl",2,"10–12","Dumbbell curl"],["Triceps Pressdown",3,"10–15","Rope pressdown"]]},{"name":"Lower B","warmup":"Bike 3 min · knee-to-chest · 90/90 hip switches · bridges · dead bug · light hip thrust","ex":[["Hip Thrust Machine",3,"8–12","Glute bridge"],["Low Step-Up",3,"8–10/leg","Single-leg leg press"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Seated Hip Abduction",2,"12–15","Cable hip abduction"],["Seated Calf Raise",3,"12–15","Standing calf raise"],["Suitcase Carry",2,"20–30 sec/side","Pallof hold"]]},{"name":"Upper B","warmup":"Bike 3 min · arm circles · pull-aparts · external rotations · light pulldown","ex":[["Neutral-Grip Lat Pulldown",3,"8–12","Assisted pull-up"],["Machine Chest Press",3,"8–12","Dumbbell bench press"],["Seated Cable Row",3,"10–12","Chest-supported row"],["Reverse Pec Deck",2,"12–15","Face pull"],["Dumbbell Biceps Curl",3,"10–12","Cable curl"],["Cable Triceps Extension",3,"10–15","Triceps pressdown"],["Pallof Press",2,"10–12/side","Dead bug"]]}]},{"id":"five","name":"5-Day Split","days":[{"name":"Chest & Biceps","warmup":"Bike 3 min · shoulder circles · band pull-aparts · light chest press","ex":[["Dumbbell Bench Press",3,"8–10","Machine chest press"],["Incline Machine Press",3,"10–12","Incline dumbbell press"],["Cable Fly",2,"12–15","Pec deck"],["Cable Biceps Curl",3,"10–12","Dumbbell curl"],["Hammer Curl",3,"10–12","Rope hammer curl"]]},{"name":"Legs","warmup":"Bike 5 min · 90/90 hip switches · glute bridges · light leg press","ex":[["Leg Press",3,"8–12","Hack squat machine"],["Single-Leg Leg Press",2,"10/leg","Low step-up"],["Seated Leg Curl",3,"10–15","Lying leg curl"],["Hip Thrust",3,"10","Glute bridge"],["Calf Raise",3,"12–15","Seated calf raise"]]},{"name":"Back & Triceps","warmup":"Bike 3 min · band pull-aparts · light pulldown and row","ex":[["Neutral-Grip Lat Pulldown",3,"8–12","Assisted pull-up"],["Seated Cable Row",3,"10–12","Chest-supported row"],["Chest-Supported Row",2,"10–12","Machine row"],["Triceps Pressdown",3,"10–15","Rope pressdown"],["Cable Triceps Extension",3,"10–12","Overhead rope extension"]]},{"name":"Shoulders","warmup":"Bike 3 min · wall slides · band external rotation · light lateral raises","ex":[["Supported Machine Shoulder Press",2,"8–10","Cable scaption"],["Cable Lateral Raise",3,"12–15","Dumbbell lateral raise"],["Reverse Pec Deck",3,"12–15","Face pull"],["Face Pull",2,"12–15","Reverse cable fly"],["Cable Scaption",2,"12","Light dumbbell scaption"]]},{"name":"Mobility & Abs","warmup":"Easy bike 5 min · gentle pain-free movement","ex":[["Supported 90/90 Hip Switches",2,"60 sec","Seated hip rotations"],["Hip Flexor Stretch",2,"45 sec/side","Half-kneeling hip flexor stretch"],["Knee-to-Chest",2,"45 sec/side","Supine knee hug"],["Hamstring Mobility",2,"45 sec/side","Supine hamstring stretch"],["Thoracic Rotation",2,"8/side","Open book"],["Wall Slides",2,"10","Band external rotation"],["Dead Bug",2,"8/side","Heel taps"],["Bird Dog",2,"8/side","Heel taps"]]}]}];
+const PROGRAM_CACHE='workout_programs_cache_v1';
+let PROGRAMS=DEFAULT_PROGRAMS;
+try{const cached=JSON.parse(localStorage.getItem(PROGRAM_CACHE)||'null');if(Array.isArray(cached)&&cached.some(p=>p.days?.length))PROGRAMS=cached}catch{}
 const KEY='workout_tracker_phase1_v1';
 // Free Exercise DB exercise-photo filenames; the fallback remains visible if an image is missing.
 const PHOTO={
@@ -77,8 +80,8 @@ const dbPromise=typeof indexedDB==='undefined'?Promise.resolve(null):new Promise
 function mirrorSnapshot(snapshot){dbPromise.then(db=>{if(!db)return;try{const tx=db.transaction('snapshots','readwrite');tx.objectStore('snapshots').put(snapshot,'workouts');}catch{}});}
 function save(){try{const snapshot=JSON.stringify(state);localStorage.setItem(KEY,snapshot);mirrorSnapshot(snapshot);window.dispatchEvent(new Event('workout-local-saved'));}catch(e){alert('Could not save workout locally. Check device storage before continuing.');throw e;}}
 if(!localStorage.getItem(KEY))dbPromise.then(db=>{if(!db||localStorage.getItem(KEY))return;try{const tx=db.transaction('snapshots','readonly');const req=tx.objectStore('snapshots').get('workouts');req.onsuccess=()=>{if(localStorage.getItem(KEY)||!req.result)return;try{const recovered=JSON.parse(req.result);if(!Array.isArray(recovered.sessions)||!recovered.next)return;state=recovered;localStorage.setItem(KEY,req.result);render();showSection(state.active?'active':'home');}catch{}};}catch{}});
-const program=()=>PROGRAMS.find(p=>p.id===state.programId)||PROGRAMS[0];
-const day=()=>program().days[state.next[program().id]%program().days.length];
+const program=()=>PROGRAMS.find(p=>p.id===state.programId)||PROGRAMS.find(p=>!p.archived)||PROGRAMS[0];
+const day=()=>program().days[(state.next[program().id]||0)%program().days.length];
 const allDone=s=>s.exercises.every(e=>e.done);
 function exerciseSeed(e,i){return {id:i,name:e[0],sets:e[1],reps:e[2],alternative:e[3],done:false,weight:'',substituted:false};}
 function render(){
@@ -127,7 +130,7 @@ return `<article class="historyItem"><div><strong>${esc(s.dayName)}</strong><sma
 }
 $('start').onclick=()=>{
 const p=program(),idx=(state.next[p.id]||0)%p.days.length,d=p.days[idx];
-state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:d.ex.map(exerciseSeed)};
+state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programVersion:p.version||1,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:d.ex.map(exerciseSeed)};
 save();render();showSection('active');
 };
 $('exercises').onchange=e=>{
@@ -180,7 +183,7 @@ const s=state.active;if(!s)return;
 const done=s.exercises.filter(e=>e.done).length;
 if(done===0&&!confirm('No exercises are checked. Finish this workout anyway?'))return;
 if(done<s.exercises.length&&!confirm('Only '+done+' of '+s.exercises.length+' exercises are checked. Finish anyway?'))return;
-s.endedAt=now();state.sessions.push(s);state.next[s.programId]=(s.dayIndex+1)%PROGRAMS.find(p=>p.id===s.programId).days.length;state.active=null;
+s.endedAt=now();state.sessions.push(s);state.next[s.programId]=(s.dayIndex+1)%(PROGRAMS.find(p=>p.id===s.programId)?.days.length||s.dayIndex+1);state.active=null;
 save();render();showSection('historySection');
 };
 $('discard').onclick=()=>{if(!state.active||!confirm('Discard this in-progress workout? This cannot be undone.'))return;state.active=null;save();render();showSection('home');};
@@ -196,7 +199,7 @@ $('export').onclick=()=>{
 const blob=new Blob([JSON.stringify({exportedAt:now(),version:1,...state},null,2)],{type:'application/json'});
 const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='workout-history-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;if(state.active){renderHistory();}else{render();}}}catch{}});
+window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;if(state.active){renderHistory();}else{render();}renderProgramGrid();}}catch{}});
 $('navHistory').onclick=()=>showSection('historySection');
 $('homeHistory').onclick=()=>showSection('historySection');
 $('homePrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
@@ -208,15 +211,17 @@ $('programHome').onclick=()=>showSection('home');
 $('dayBack').onclick=()=>{showSection('programDaysSection');};
 let browsedProgram=null;
 function renderProgramGrid(){
- $('programGrid').innerHTML=PROGRAMS.map(p=>'<button type="button" class="programTile" data-program="'+p.id+'"><span class="programTileIcon">▤</span><strong>'+esc(p.name)+'</strong><small>'+p.days.length+' training days</small>'+(p.id===state.programId?'<span class="selectedPill">Active program</span>':'')+'</button>').join('');
+ $('programGrid').innerHTML=PROGRAMS.filter(p=>!p.archived||p.id===state.programId).map(p=>'<button type="button" class="programTile" data-program="'+p.id+'"><span class="programTileIcon">▤</span><strong>'+esc(p.name)+'</strong><small>'+p.days.length+' training days</small>'+(p.id===state.programId?'<span class="selectedPill">Active program</span>':'')+'</button>').join('');
 }
 function renderProgramDays(p){
  browsedProgram=p;
  $('programDaysTitle').textContent=p.name;
  $('programDaysList').innerHTML=p.days.map((d,i)=>'<button type="button" class="dayTile" data-day="'+i+'"><span><small>DAY '+(i+1)+'</small><strong>'+esc(d.name)+'</strong><small>'+d.ex.length+' exercises</small></span><span aria-hidden="true">›</span></button>').join('');
  $('selectProgram').textContent=p.id===state.programId?'Active program ✓':'Set as active program';
- $('selectProgram').disabled=p.id===state.programId||!!state.active;
+ $('selectProgram').disabled=p.id===state.programId||!!state.active||!!p.archived;
  $('programLock').hidden=!state.active;
+ $('archiveProgram').textContent=p.archived?'Restore archived program':'Archive program';
+ $('archiveProgram').disabled=!!state.active||p.id===state.programId;
 }
 $('programGrid').onclick=e=>{
  const b=e.target.closest('[data-program]');if(!b)return;
@@ -234,8 +239,26 @@ $('programDaysList').onclick=e=>{
 };
 $('selectProgram').onclick=()=>{
  if(!browsedProgram||state.active)return;
- state.programId=browsedProgram.id;save();render();renderProgramDays(browsedProgram);renderProgramGrid();showSection('programDaysSection');
+ state.programId=browsedProgram.id;if(!(state.programId in state.next))state.next[state.programId]=0;save();render();renderProgramDays(browsedProgram);renderProgramGrid();showSection('programDaysSection');
 };
+
+$('archiveProgram').onclick=()=>{
+ if(!browsedProgram||state.active||browsedProgram.id===state.programId)return;
+ const newValue=!browsedProgram.archived;
+ if(newValue&&!confirm('Archive '+browsedProgram.name+'? You can restore it later.'))return;
+ browsedProgram.archived=newValue;
+ localStorage.setItem(PROGRAM_CACHE,JSON.stringify(PROGRAMS));
+ window.dispatchEvent(new CustomEvent('workout-program-archive',{detail:{id:browsedProgram.id,archived:newValue}}));
+ renderProgramGrid();showSection('programSection');
+};
+window.addEventListener('workout-programs-updated',()=>{
+ try{const cached=JSON.parse(localStorage.getItem(PROGRAM_CACHE)||'null');if(!Array.isArray(cached)||!cached.length)return;
+ PROGRAMS=cached.filter(p=>p&&p.id&&Array.isArray(p.days)&&p.days.length);
+ if(!PROGRAMS.length)PROGRAMS=DEFAULT_PROGRAMS;
+ if(!PROGRAMS.some(p=>p.id===state.programId)){state.programId=PROGRAMS[0].id;save()}
+ if(!state.active){render();renderProgramGrid()}
+ }catch{}
+});
 
 $('backProgress').onclick=()=>showSection('home');
 $('today').onclick=()=>{showSection('upcoming');$('backHome').hidden=false;};

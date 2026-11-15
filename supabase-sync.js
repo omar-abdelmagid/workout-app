@@ -1,26 +1,27 @@
 (() => {
 'use strict';
 const $=id=>document.getElementById(id);
-const STORE='workout_tracker_phase1_v1',KEY_STORE='workout_device_key_v1';
+const STORE='workout_tracker_phase1_v1',KEY_STORE='workout_device_key_v1',PROGRAM_CACHE='workout_programs_cache_v1';
+const SYNC_STATE_AT='workout_cloud_state_at_v1',STATE_DIRTY='workout_cloud_state_dirty_v1';
 const ENDPOINT='https://yipexqnkvwlvprhzstfr.supabase.co/functions/v1/workout-backup';
-let deviceKey=localStorage.getItem(KEY_STORE)||'',busy=false,connecting=false,timer=null;
-const state=()=>{try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch{return {}}};
+let deviceKey=localStorage.getItem(KEY_STORE)||'',busy=false,connecting=false,timer=null,archiveQueue=[];
+const read=()=>{try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch{return {}}};
 const message=(text,error=false)=>{
  $('syncStatus').textContent=text;$('homeLoginStatus').textContent=text;
  $('backupDot').className='backupDot '+(error?'error':text.includes('up to date')?'ok':text.includes('pending')?'warn':'');
 };
 function update(){
- const sessions=state().sessions||[];
+ const sessions=read().sessions||[];
  $('syncCount').textContent=sessions.length?sessions.filter(x=>x.cloudSynced).length+' of '+sessions.length+' completed workouts backed up':'No completed workouts yet';
  $('syncAuth').hidden=!!deviceKey;$('syncAccount').hidden=!deviceKey;
  $('homeLogin').hidden=!!deviceKey;
  $('syncUser').textContent='Private device connected';
  $('homeConnect').disabled=connecting;$('syncConnect').disabled=connecting;
 }
-async function request(key,method='GET',sessions){
- const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+async function request(key,method='GET',payload){
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
  try{
-  const response=await fetch(ENDPOINT,{method,headers:{'x-workout-key':key,...(sessions?{'Content-Type':'application/json'}:{})},...(sessions?{body:JSON.stringify({sessions})}:{}),signal:controller.signal});
+  const response=await fetch(ENDPOINT,{method,headers:{'x-workout-key':key,...(payload?{'Content-Type':'application/json'}:{})},...(payload?{body:JSON.stringify(payload)}:{}),signal:controller.signal});
   let data={};try{data=await response.json()}catch{}
   if(!response.ok)throw Error(data.error||'Backup request failed ('+response.status+')');
   return data;
@@ -38,40 +39,78 @@ async function connect(input){
   $('homeDeviceKey').value='';$('syncDeviceKey').value='';
   $('backupDetails').open=false;message('Device connected · backing up…');schedule();
  }catch(e){message('Connection failed: '+e.message,true)}
- finally{connecting=false;buttons.forEach((b,i)=>b.textContent=labels[i]);update()}
+ finally{connecting=false;buttons.forEach((b,i)=>b.textContent=labels[i]);connecting=false;update()}
 }
 $('homeConnect').onclick=()=>connect($('homeDeviceKey').value);
 $('syncConnect').onclick=()=>connect($('syncDeviceKey').value);
 $('syncLogout').onclick=()=>{
  localStorage.removeItem(KEY_STORE);deviceKey='';message('Device disconnected. Workouts remain saved locally.');update();
 };
+function reconcileRemoteState(remote,local){
+ if(!remote)return false;
+ const seen=localStorage.getItem(SYNC_STATE_AT)||'';
+ const dirty=localStorage.getItem(STATE_DIRTY)==='1';
+ if(dirty)return false;
+ // On a previously used device, local changes take precedence at first migration.
+ const hasLocalHistory=(local.sessions||[]).length>0||!!local.active||local.programId!=='four'||Object.values(local.next||{}).some(n=>n>0);
+ if(!seen&&hasLocalHistory)return false;
+ if(seen&&remote.updated_at<=seen)return false;
+ const next=remote.next_days||{};
+ local.next={...next,...(local.active?{[local.active.programId]:local.next?.[local.active.programId]||0}:{})};
+ if(!local.active)local.active=remote.active_workout||null;
+ if(!local.active||local.active.id===remote.active_workout?.id)local.programId=remote.selected_program_id||local.programId;
+ localStorage.setItem(SYNC_STATE_AT,remote.updated_at);
+ return true;
+}
 async function sync(){
  if(busy||!deviceKey||!navigator.onLine)return;
  busy=true;message('Backing up workouts…');
  try{
   const data=await request(deviceKey);
+  if(Array.isArray(data.programs)&&data.programs.length){
+   const cache=data.programs.filter(p=>p.id&&p.days?.length);
+   if(cache.length){
+    const old=localStorage.getItem(PROGRAM_CACHE),updated=JSON.stringify(cache);
+    if(old!==updated){localStorage.setItem(PROGRAM_CACHE,updated);window.dispatchEvent(new Event('workout-programs-updated'))}
+   }
+  }
   const remote=new Map((data.sessions||[]).map(r=>[r.id,r.payload]));
-  // Re-read local state after network activity so in-progress changes aren't overwritten.
-  const local=state(),sessions=Array.isArray(local.sessions)?local.sessions:[];
+  const local=read(),sessions=Array.isArray(local.sessions)?local.sessions:[];
   const known=new Set(sessions.map(s=>s.id));let recovered=0,changed=false;
   for(const [id,item] of remote)if(!known.has(id)&&item?.id===id&&item.endedAt&&Array.isArray(item.exercises)){
    sessions.push({...item,cloudSynced:true});known.add(id);recovered++;changed=true;
   }
   for(const item of sessions)if(remote.has(item.id)&&!item.cloudSynced){item.cloudSynced=true;changed=true}
+  if(reconcileRemoteState(data.appState,local))changed=true;
   if(changed){local.sessions=sessions;localStorage.setItem(STORE,JSON.stringify(local));window.dispatchEvent(new Event('workout-cloud-merged'))}
   const pending=sessions.filter(x=>x.id&&x.endedAt&&!remote.has(x.id));
-  for(let i=0;i<pending.length;i+=100)await request(deviceKey,'POST',pending.slice(i,i+100).map(({cloudSynced,...rest})=>rest));
-  const latest=state();let marked=false;
+  for(let i=0;i<pending.length;i+=100)await request(deviceKey,'POST',{sessions:pending.slice(i,i+100).map(({cloudSynced,...rest})=>rest)});
+  // If the user changed the active workout while network requests ran, take the newest local snapshot.
+  const latest=read();let marked=false;
   const uploaded=new Set(pending.map(x=>x.id));
   for(const item of latest.sessions||[])if((remote.has(item.id)||uploaded.has(item.id))&&!item.cloudSynced){item.cloudSynced=true;marked=true}
   if(marked){localStorage.setItem(STORE,JSON.stringify(latest));window.dispatchEvent(new Event('workout-cloud-merged'))}
+  if(archiveQueue.length){
+   for(const archive of archiveQueue)await request(deviceKey,'POST',{sessions:[],archive});
+   archiveQueue=[];
+  }
+  const current=read();
+  if(current.programId){
+   const snapshot=JSON.stringify({selectedProgramId:current.programId,next:current.next||{},active:current.active||null});
+   await request(deviceKey,'POST',{sessions:[],appState:JSON.parse(snapshot)});
+   if(JSON.stringify({selectedProgramId:read().programId,next:read().next||{},active:read().active||null})===snapshot){
+    localStorage.removeItem(STATE_DIRTY);
+   }else schedule();
+   localStorage.setItem(SYNC_STATE_AT,new Date().toISOString());
+  }
   message('Cloud backup up to date ✓'+(recovered?' · '+recovered+' restored':''));
  }catch(e){message('Backup pending: '+e.message,true)}
  finally{busy=false;update()}
 }
 function schedule(){if(timer)clearTimeout(timer);timer=setTimeout(()=>{timer=null;sync()},800)}
 window.addEventListener('online',schedule);
-window.addEventListener('workout-local-saved',()=>{update();if(deviceKey)schedule()});
+window.addEventListener('workout-local-saved',()=>{localStorage.setItem(STATE_DIRTY,'1');update();if(deviceKey)schedule()});
+window.addEventListener('workout-program-archive',e=>{archiveQueue.push(e.detail);if(deviceKey)schedule()});
 window.addEventListener('workout-cloud-merged',update);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&deviceKey)schedule()});
 update();
