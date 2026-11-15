@@ -11,7 +11,50 @@ const PHOTO={
 'Incline Machine Press':'Leverage_Incline_Chest_Press','Cable Fly':'Cable_Crossover','Hammer Curl':'Hammer_Curls','Calf Raise':'Standing_Calf_Raises','Chest-Supported Row':'Chest-Supported_Dumbbell_Row','Supported Machine Shoulder Press':'Machine_Shoulder_(Military)_Press','Face Pull':'Face_Pull','Cable Scaption':'Front_Cable_Raise',
 'Dead Bug':'Dead_Bug','Bird Dog':'Bird_Dog','Wall Slides':'Wall_Slide','Hip Flexor Stretch':'Kneeling_Hip_Flexor','Knee-to-Chest':'Knee_Across_The_Body','Hamstring Mobility':'Standing_Hamstring_and_Calf_Stretch','Thoracic Rotation':'Side_Lying_Floor_Stretch','Supported 90/90 Hip Switches':'90_90_Hamstring'
 };
-const photoUrl=name=>PHOTO[name]?'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'+encodeURIComponent(PHOTO[name])+'/0.jpg':'';
+
+// Verified exercise-library image IDs for the workout substitutions.
+const ALTERNATIVE_PHOTO={
+ "Hack squat machine": "Hack_Squat",
+ "Supported step-up": "Dumbbell_Step_Ups",
+ "Lying leg curl": "Lying_Leg_Curls",
+ "Terminal knee extension": "Leg_Extensions",
+ "Seated calf raise": "Seated_Calf_Raise",
+ "Heel taps": "Alternate_Heel_Touchers",
+ "Machine chest press": "Leverage_Chest_Press",
+ "Chest-supported row": "Dumbbell_Incline_Row",
+ "Incline dumbbell press": "Incline_Dumbbell_Press",
+ "Assisted neutral-grip pull-up": "Band_Assisted_Pull-Up",
+ "Dumbbell lateral raise": "Side_Lateral_Raise",
+ "Dumbbell curl": "Dumbbell_Bicep_Curl",
+ "Rope pressdown": "Triceps_Pushdown_-_Rope_Attachment",
+ "Glute bridge": "Butt_Lift_Bridge",
+ "Cable hip abduction": "Thigh_Abductor",
+ "Standing calf raise": "Standing_Calf_Raises",
+ "Pallof hold": "Pallof_Press",
+ "Assisted pull-up": "Band_Assisted_Pull-Up",
+ "Dumbbell bench press": "Dumbbell_Bench_Press",
+ "Face pull": "Face_Pull",
+ "Cable curl": "High_Cable_Curls",
+ "Triceps pressdown": "Triceps_Pushdown",
+ "Dead bug": "Dead_Bug",
+ "Pec deck": "Butterfly",
+ "Rope hammer curl": "Cable_Hammer_Curls_-_Rope_Attachment",
+ "Low step-up": "Dumbbell_Step_Ups",
+ "Machine row": "Leverage_Iso_Row",
+ "Overhead rope extension": "Cable_Rope_Overhead_Triceps_Extension",
+ "Cable scaption": "Dumbbell_Scaption",
+ "Reverse cable fly": "Cable_Rear_Delt_Fly",
+ "Light dumbbell scaption": "Dumbbell_Scaption",
+ "Seated hip rotations": "Ankle_On_The_Knee",
+ "Half-kneeling hip flexor stretch": "Kneeling_Hip_Flexor",
+ "Supine knee hug": "One_Knee_To_Chest",
+ "Supine hamstring stretch": "90_90_Hamstring",
+ "Band external rotation": "External_Rotation_with_Band",
+ "Cable lateral raise": "Cable_Seated_Lateral_Raise",
+ "Cable biceps curl": "High_Cable_Curls",
+ "Cable triceps extension": "Cable_Rope_Overhead_Triceps_Extension"
+};
+const photoUrl=name=>(PHOTO[name]||ALTERNATIVE_PHOTO[name])?'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'+encodeURIComponent(PHOTO[name]||ALTERNATIVE_PHOTO[name])+'/0.jpg':'';
 const imageHtml=name=>{
  const src=photoUrl(name);
  return '<button type="button" class="exerciseImage" data-image-name="'+esc(name)+'" aria-label="Expand '+esc(name)+' image">'+(src?'<img loading="lazy" src="'+src+'" alt="'+esc(name)+' exercise" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="imageFallback" hidden>Image unavailable</span>':'<span class="imageFallback">Image unavailable</span>')+'</button>';
