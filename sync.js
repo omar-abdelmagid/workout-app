@@ -112,7 +112,7 @@ $('syncConnect').onclick=()=>{
 };
 $('syncNow').onclick=sync;
 window.addEventListener('online',()=>{if(accessToken&&Date.now()<expiresAt)sync();else{status('Online. Connect Google to sync pending workouts.');update();}});
-window.addEventListener('workout-local-saved',()=>{update();if(accessToken&&Date.now()<expiresAt&&navigator.onLine)sync();});
+window.addEventListener('workout-local-saved',()=>{update();const pending=(state().sessions||[]).some(s=>s.endedAt&&!s.cloudSynced);if(pending&&accessToken&&Date.now()<expiresAt&&navigator.onLine)sync();});
 window.addEventListener('workout-cloud-merged',update);
 update();
 if(localStorage.getItem(CLIENT))status('Connect Google to sync. Your completed workouts remain on this device until synced.');

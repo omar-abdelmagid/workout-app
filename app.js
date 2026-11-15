@@ -196,7 +196,7 @@ $('export').onclick=()=>{
 const blob=new Blob([JSON.stringify({exportedAt:now(),version:1,...state},null,2)],{type:'application/json'});
 const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='workout-history-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;render();}}catch{}});
+window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;if(state.active){renderHistory();}else{render();}}}catch{}});
 $('navHistory').onclick=()=>showSection('historySection');
 $('homeHistory').onclick=()=>showSection('historySection');
 $('homePrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
