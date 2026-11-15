@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 });
 test.afterEach(async ({ page }) => { expect(errors.get(page)).toEqual([]); });
 
-test('tabs, nested navigation, scroll restoration, and repeated page reuse', async ({ page }) => {
+test('tabs, nested navigation, and repeated page reuse', async ({ page }) => {
   await tab(page, 'programs');await onPage(page, 'programSection');
   for (let i = 0; i < 3; i++) {
     await page.locator('.programTile').first().click();await onPage(page, 'programDaysSection');
@@ -56,16 +56,16 @@ test('weights and checked exercises survive tabs, sheets, and reload', async ({ 
   await expect(page.locator('[data-action="weightToggle"]').first()).toContainText('125.5');
 });
 
-test('alternative picker cancels or applies without losing the weight', async ({ page }) => {
+test('alternative picker cancels, applies, and restores an exercise', async ({ page }) => {
   await start(page);
   const button = page.locator('[data-action="swap"]').first();
   const card = page.locator('.exercise').filter({ has: button });
   const original = await card.locator('.check strong').innerText();
   await button.click();await page.getByText('Cancel', { exact: true }).click();
   await expect(card.locator('.check strong')).toHaveText(original);
-  await button.click();await page.locator('.actions-button').filter({ hasText: 'Use alternative:' }).click();
+  await button.click();await page.locator('.actions-modal.modal-in .actions-button').filter({ hasText: 'Use alternative:' }).click();
   await expect(card.locator('.check strong')).not.toHaveText(original);
-  await button.click();await page.locator('.actions-button').filter({ hasText: 'Use original:' }).click();
+  await button.click();await page.locator('.actions-modal.modal-in .actions-button').filter({ hasText: 'Use original:' }).click();
   await expect(card.locator('.check strong')).toHaveText(original);
 });
 
@@ -76,9 +76,9 @@ test('finish confirmation, history details, and image sheet', async ({ page }) =
   await expect(page.locator('#imageDialog')).toHaveClass(/modal-in/);
   await page.locator('#closeImage').click();
   await page.locator('#finish').click();await expect(page.locator('.dialog.modal-in')).toBeVisible();
-  await page.locator('.dialog-button').filter({ hasText: 'Cancel' }).click();
+  await page.locator('.dialog.modal-in .dialog-button').filter({ hasText: 'Cancel' }).click();
   expect((await saved(page)).sessions).toHaveLength(0);
-  await page.locator('#finish').click();await page.locator('.dialog-button').filter({ hasText: 'OK' }).click();
+  await page.locator('#finish').click();await page.locator('.dialog.modal-in .dialog-button').filter({ hasText: 'OK' }).click();
   await onPage(page, 'home');await expect(page.locator('#workoutSuccess')).toBeVisible();
   expect((await saved(page)).sessions).toHaveLength(1);
   await tab(page, 'history');await page.locator('[data-history]').click();
@@ -91,9 +91,9 @@ test('finish confirmation, history details, and image sheet', async ({ page }) =
 
 test('discard cancellation preserves workout and confirm clears it', async ({ page }) => {
   await start(page);const id = (await saved(page)).active.id;
-  await page.locator('#discard').click();await page.locator('.dialog-button').filter({ hasText: 'Cancel' }).click();
+  await page.locator('#discard').click();await page.locator('.dialog.modal-in .dialog-button').filter({ hasText: 'Cancel' }).click();
   expect((await saved(page)).active.id).toBe(id);
-  await page.locator('#discard').click();await page.locator('.dialog-button').filter({ hasText: 'OK' }).click();
+  await page.locator('#discard').click();await page.locator('.dialog.modal-in .dialog-button').filter({ hasText: 'OK' }).click();
   await onPage(page, 'home');expect((await saved(page)).active).toBeNull();
 });
 
