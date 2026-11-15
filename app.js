@@ -99,8 +99,8 @@ $('nextTitle').textContent=d.name;
 $('homeNext').textContent='Next: '+d.name;
 $('homeFocus').textContent=({ 'Lower A':'Quads · Hamstrings · Calves · Core','Lower B':'Glutes · Hamstrings · Calves · Core','Upper A':'Chest · Back · Arms','Upper B':'Back · Chest · Arms','Legs':'Quads · Hamstrings · Glutes','Chest & Biceps':'Chest · Biceps','Back & Triceps':'Back · Triceps','Shoulders':'Shoulders · Rear delts','Mobility & Abs':'Mobility · Core' })[d.name]||'Strength training';
 $('nextMeta').textContent='Day '+(i+1)+' of '+p.days.length+' · '+d.ex.length+' exercises';
-$('nextWarmup').textContent=d.warmup;
-$('preview').innerHTML=d.ex.map(e=>'<li class="previewItem">'+imageHtml(e[0])+'<span><strong>'+esc(e[0])+'</strong><small>'+e[1]+' × '+esc(e[2])+'</small></span></li>').join('');
+const warmups=String(d.warmup||'').split(/\s*[·•\n]\s*/).map(s=>s.trim()).filter(Boolean);
+$('nextWarmup').innerHTML=warmups.length?warmups.map(s=>'<li>'+esc(s)+'</li>').join(''):'<li>No warm-up specified for this day.</li>';
 }
 function renderActive(){
 const s=state.active,completed=s.exercises.filter(e=>e.done).length;
@@ -215,6 +215,7 @@ function renderProgramGrid(){
 }
 function renderProgramDays(p){
  browsedProgram=p;
+ $('programSettings').open=false;
  $('programDaysTitle').textContent=p.name;
  $('programDaysList').innerHTML=p.days.map((d,i)=>'<button type="button" class="dayTile" data-day="'+i+'"><span><small>DAY '+(i+1)+'</small><strong>'+esc(d.name)+'</strong><small>'+d.ex.length+' exercises</small></span><span aria-hidden="true">›</span></button>').join('');
  $('selectProgram').textContent=p.id===state.programId?'Active program ✓':'Set as active program';
@@ -249,7 +250,7 @@ $('archiveProgram').onclick=()=>{
  browsedProgram.archived=newValue;
  localStorage.setItem(PROGRAM_CACHE,JSON.stringify(PROGRAMS));
  window.dispatchEvent(new CustomEvent('workout-program-archive',{detail:{id:browsedProgram.id,archived:newValue}}));
- renderProgramGrid();showSection('programSection');
+ $('programSettings').open=false;renderProgramGrid();showSection('programSection');
 };
 window.addEventListener('workout-programs-updated',()=>{
  try{const cached=JSON.parse(localStorage.getItem(PROGRAM_CACHE)||'null');if(!Array.isArray(cached)||!cached.length)return;
