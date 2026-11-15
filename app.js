@@ -124,6 +124,7 @@ $('homeProgram').textContent=program().name;
 $('navHistory').textContent='History ('+state.sessions.length+')';
 if(state.active) renderActive(); else renderUpcoming();
 renderHistory();
+if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);
 }
 function renderUpcoming(){
 const p=program(),i=(state.next[p.id]||0)%p.days.length,d=p.days[i];
@@ -238,11 +239,11 @@ $('export').onclick=()=>{
 const blob=new Blob([JSON.stringify({exportedAt:now(),version:1,...state},null,2)],{type:'application/json'});
 const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='workout-history-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;if(state.active){renderHistory();}else{render();}renderProgramGrid();}}catch{}});
+window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;if(state.active){renderHistory();if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);}else{render();}renderProgramGrid();}}catch{}});
 $('navHistory').onclick=()=>showSection('historySection');
 $('homeHistory').onclick=()=>showSection('historySection');
 $('homePrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
-$('homeProgress').onclick=()=>showSection('progressSection');
+$('homeProgress').onclick=()=>{if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);showSection('progressSection');};
 $('backHome').onclick=()=>{$('backHome').hidden=true;showSection('home');};
 $('historyBack').onclick=()=>showSection('home');
 $('backPrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
