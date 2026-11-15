@@ -67,7 +67,16 @@ const date=s=>new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle
 const initial=()=>({programId:'four',next:{four:0,five:0},sessions:[],active:null});
 let state;
 try { state=JSON.parse(localStorage.getItem(KEY))||initial(); if(!state.next||!Array.isArray(state.sessions)) throw Error('bad data'); } catch(e) {state=initial(); alert('Saved workout data could not be read. The app will start with a new local history.');}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));window.dispatchEvent(new Event('workout-local-saved'));}catch(e){alert('Could not save workout locally. Check device storage before continuing.');throw e;}}
+// IndexedDB mirrors the local state for a second on-device recovery path.
+const dbPromise=typeof indexedDB==='undefined'?Promise.resolve(null):new Promise(resolve=>{
+ try{const req=indexedDB.open('WorkoutTrackerOffline',1);
+ req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('snapshots'))req.result.createObjectStore('snapshots');};
+ req.onsuccess=()=>resolve(req.result);req.onerror=()=>resolve(null);
+ }catch{resolve(null);}
+});
+function mirrorSnapshot(snapshot){dbPromise.then(db=>{if(!db)return;try{const tx=db.transaction('snapshots','readwrite');tx.objectStore('snapshots').put(snapshot,'workouts');}catch{}});}
+function save(){try{const snapshot=JSON.stringify(state);localStorage.setItem(KEY,snapshot);mirrorSnapshot(snapshot);window.dispatchEvent(new Event('workout-local-saved'));}catch(e){alert('Could not save workout locally. Check device storage before continuing.');throw e;}}
+if(!localStorage.getItem(KEY))dbPromise.then(db=>{if(!db||localStorage.getItem(KEY))return;try{const tx=db.transaction('snapshots','readonly');const req=tx.objectStore('snapshots').get('workouts');req.onsuccess=()=>{if(localStorage.getItem(KEY)||!req.result)return;try{const recovered=JSON.parse(req.result);if(!Array.isArray(recovered.sessions)||!recovered.next)return;state=recovered;localStorage.setItem(KEY,req.result);render();showSection(state.active?'active':'home');}catch{}};}catch{}});
 const program=()=>PROGRAMS.find(p=>p.id===state.programId)||PROGRAMS[0];
 const day=()=>program().days[state.next[program().id]%program().days.length];
 const allDone=s=>s.exercises.every(e=>e.done);
