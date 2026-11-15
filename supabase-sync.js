@@ -5,7 +5,7 @@ const STORE='workout_tracker_phase1_v1',AUTH='workout_supabase_auth_v1';
 const state=()=>JSON.parse(localStorage.getItem(STORE)||'{}');
 // Public client configuration. Database access is restricted by Supabase RLS.
 const config=()=>({url:'https://yipexqnkvwlvprhzstfr.supabase.co',key:'sb_publishable_TY6c1lHDtFrkpLqYCg9Tgg_IbleQFfT'});
-let auth=null,busy=false,refreshPromise=null,syncTimer=null;
+let auth=null,busy=false,refreshPromise=null,syncTimer=null,loginBusy=false;
 try{auth=JSON.parse(localStorage.getItem(AUTH)||'null')}catch{}
 const message=(text,error=false)=>{ $('homeLoginStatus').textContent=text; $('syncStatus').textContent=text;const dot=$('backupDot');dot.className='backupDot '+(error?'error':text.includes('up to date')?'ok':text.includes('pending')?'warn':''); };
 const persistAuth=value=>{auth=value;if(value)localStorage.setItem(AUTH,JSON.stringify(value));else localStorage.removeItem(AUTH);update()};
@@ -18,7 +18,10 @@ function update(){
  $('syncAccount').hidden=!auth;
  $('syncAuth').hidden=!!auth;
  $('homeLogin').hidden=!!auth;
- $('syncLogin').disabled=busy;
+ $('syncLogin').disabled=loginBusy;
+ $('homeSendCode').disabled=loginBusy;
+ $('syncConfirm').disabled=loginBusy;
+ $('homeConfirm').disabled=loginBusy;
 }
 async function request(path,{method='GET',body,token,prefer}={}){
  const c=config();
@@ -80,7 +83,7 @@ function schedule(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(()
 const savedEmail=localStorage.getItem('workout_supabase_email')||'';
 $('syncEmail').value=savedEmail;$('homeEmail').value=savedEmail;
 async function sendLink(email){
- email=email.trim();if(!/^\\S+@\\S+\\.\\S+$/.test(email))throw Error('Enter a valid email address.');
+ email=email.trim();if(!/^\S+@\S+\.\S+$/.test(email))throw Error('Enter a valid email address.');
  localStorage.setItem('workout_supabase_email',email);
  $('syncEmail').value=email;$('homeEmail').value=email;
  await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true,email_redirect_to:location.origin+location.pathname}});
@@ -102,10 +105,22 @@ async function verifyLink(raw){
  $('backupDetails').open=false;
  message('Signed in · backing up automatically');schedule();
 }
-$('syncLogin').onclick=async()=>{try{await sendLink($('syncEmail').value)}catch(e){message(e.message,true)}};
-$('homeSendCode').onclick=async()=>{try{await sendLink($('homeEmail').value)}catch(e){message(e.message,true)}};
-$('syncConfirm').onclick=async()=>{try{await verifyLink($('syncLink').value)}catch(e){message(e.message,true)}};
-$('homeConfirm').onclick=async()=>{try{await verifyLink($('homeLink').value)}catch(e){message(e.message,true)}};
+async function withLoginProgress(kind,action){
+ if(loginBusy)return;
+ loginBusy=true;update();
+ const send=kind==='send';
+ const ids=send?['syncLogin','homeSendCode']:['syncConfirm','homeConfirm'];
+ const labels=ids.map(id=>$(id).textContent);
+ ids.forEach(id=>$(id).textContent=send?'Sending…':'Verifying…');
+ message(send?'Sending sign-in email…':'Verifying your sign-in link…');
+ try{await action()}
+ catch(e){message((send?'Could not send email: ':'Could not sign in: ')+(e?.message||'Network error'),true)}
+ finally{ids.forEach((id,i)=>$(id).textContent=labels[i]);loginBusy=false;update()}
+}
+$('syncLogin').onclick=()=>withLoginProgress('send',()=>sendLink($('syncEmail').value));
+$('homeSendCode').onclick=()=>withLoginProgress('send',()=>sendLink($('homeEmail').value));
+$('syncConfirm').onclick=()=>withLoginProgress('verify',()=>verifyLink($('syncLink').value));
+$('homeConfirm').onclick=()=>withLoginProgress('verify',()=>verifyLink($('homeLink').value));
 $('syncLogout').onclick=async()=>{
  try{const t=await token();if(t)await request('/auth/v1/logout',{method:'POST',token:t})}catch{}
  persistAuth(null);message('Signed out. Local workouts are still saved.');
