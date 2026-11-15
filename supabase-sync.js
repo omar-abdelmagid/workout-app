@@ -7,7 +7,7 @@ const state=()=>JSON.parse(localStorage.getItem(STORE)||'{}');
 const config=()=>({url:'https://yipexqnkvwlvprhzstfr.supabase.co',key:'sb_publishable_TY6c1lHDtFrkpLqYCg9Tgg_IbleQFfT'});
 let auth=null,busy=false,refreshPromise=null,syncTimer=null;
 try{auth=JSON.parse(localStorage.getItem(AUTH)||'null')}catch{}
-const message=(text,error=false)=>{$('syncStatus').textContent=text;$('syncStatus').style.color=error?'#a22':'#555'};
+const message=(text,error=false)=>{ $('syncStatus').textContent=text;const dot=$('backupDot');dot.className='backupDot '+(error?'error':text.includes('up to date')?'ok':text.includes('pending')?'warn':''); };
 const persistAuth=value=>{auth=value;if(value)localStorage.setItem(AUTH,JSON.stringify(value));else localStorage.removeItem(AUTH);update()};
 const validConfig=()=>{const c=config();return /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(c.url||'')&&/^(sb_publishable_|eyJ)/.test(c.key||'')};
 const endpoint=()=>config().url.replace(/\/$/,'');
@@ -17,7 +17,6 @@ function update(){
  $('syncUser').textContent=auth?.user?.email||'Connected';
  $('syncAccount').hidden=!auth;
  $('syncAuth').hidden=!!auth;
- $('syncNow').disabled=busy||!auth||!validConfig();
  $('syncLogin').disabled=busy;
 }
 async function request(path,{method='GET',body,token,prefer}={}){
@@ -72,7 +71,7 @@ async function sync(){
   localStorage.setItem(STORE,JSON.stringify(latest));
   window.dispatchEvent(new Event('workout-cloud-merged'));
   const remaining=(latest.sessions||[]).filter(x=>x.endedAt&&!x.cloudSynced).length;
-  message(remaining?remaining+' workouts pending. Will retry when connected.':'Cloud backup up to date ✓'+(recovered?' · '+recovered+' restored':''));
+  message(remaining?'Backup pending · will retry automatically':'Cloud backup up to date ✓'+(recovered?' · '+recovered+' restored':''));
  }catch(e){message('Cloud backup pending: '+e.message,true)}
  finally{busy=false;update()}
 }
@@ -85,10 +84,9 @@ $('syncLogin').onclick=async()=>{
   localStorage.setItem('workout_supabase_email',email);
   const redirect=location.origin+location.pathname;
   await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true,email_redirect_to:redirect}});
-  message('Check your email and open the sign-in link on this iPhone.');
+  message('Check your email for a sign-in link.');
  }catch(e){message(e.message,true)}
 };
-$('syncNow').onclick=sync;
 $('syncLogout').onclick=async()=>{
  try{const t=await token();if(t)await request('/auth/v1/logout',{method:'POST',token:t})}catch{}
  persistAuth(null);message('Signed out. Local workouts are still saved.');
@@ -109,7 +107,7 @@ async function consumeRedirect(){
    acceptAuth(data);sessionStorage.removeItem('workout_supabase_pkce_verifier');
   }else return;
   history.replaceState(null,'',location.pathname);
-  message('Signed in. Starting automatic backup.');schedule();
+  $('backupDetails').open=false;message('Signed in · backing up automatically');schedule();
  }catch(e){message('Sign-in failed: '+e.message,true)}
 }
 window.addEventListener('online',schedule);
@@ -117,5 +115,5 @@ window.addEventListener('workout-local-saved',()=>{update();if(auth)schedule()})
 window.addEventListener('workout-cloud-merged',update);
 window.addEventListener('visibilitychange',()=>{if(!document.hidden&&auth)schedule()});
 update();
-consumeRedirect().then(async()=>{if(auth){try{await token();schedule()}catch{}}else message('Sign in once to enable automatic cloud backup.')});
+consumeRedirect().then(async()=>{if(auth){try{await token();schedule()}catch{}}else message('Local only · tap ⋯ to enable cloud backup')});
 })();
