@@ -36,7 +36,7 @@ async function token(){
  if(Date.now()/1000 < (auth.expires_at||0)-90)return auth.access_token;
  if(!refreshPromise)refreshPromise=(async()=>{
   try{const result=await request('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:auth.refresh_token}});acceptAuth(result);return auth.access_token}
-  catch(e){persistAuth(null);message('Session expired. Sign in with an email code.',true);throw e}
+  catch(e){persistAuth(null);message('Session expired. Request a new sign-in link.',true);throw e}
  })().finally(()=>{refreshPromise=null});
  return refreshPromise;
 }
@@ -79,25 +79,33 @@ async function sync(){
 function schedule(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(()=>{syncTimer=null;sync()},1200)}
 const savedEmail=localStorage.getItem('workout_supabase_email')||'';
 $('syncEmail').value=savedEmail;$('homeEmail').value=savedEmail;
-async function sendCode(email){
+async function sendLink(email){
  email=email.trim();if(!/^\\S+@\\S+\\.\\S+$/.test(email))throw Error('Enter a valid email address.');
  localStorage.setItem('workout_supabase_email',email);
  $('syncEmail').value=email;$('homeEmail').value=email;
- await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true}});
+ await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true,email_redirect_to:location.origin+location.pathname}});
  $('syncVerify').hidden=false;$('homeVerify').hidden=false;
- message('Enter the 6-digit code sent to your email.');
+ message('Email sent. Copy the sign-in link and paste it below.');
 }
-async function verifyCode(code){
- const email=localStorage.getItem('workout_supabase_email');
- if(!/^\\d{6}$/.test(code))throw Error('Enter the six-digit code from your email.');
- const data=await request('/auth/v1/verify',{method:'POST',body:{email,token:code,type:'email'}});
- acceptAuth(data);$('syncVerify').hidden=true;$('homeVerify').hidden=true;
+async function verifyLink(raw){
+ const input=raw.trim();let url;
+ try{url=new URL(input)}catch{throw Error('Paste the complete link from your sign-in email.')}
+ const expected=new URL(config().url);
+ if(url.protocol!=='https:'||url.origin!==expected.origin||url.pathname!=='/auth/v1/verify')throw Error('This is not a valid Supabase sign-in link. Copy the link from your email.');
+ const tokenHash=url.searchParams.get('token')||url.searchParams.get('token_hash');
+ const type=url.searchParams.get('type');
+ if(!tokenHash||!['magiclink','email','signup'].includes(type))throw Error('The email link is missing its verification token.');
+ const data=await request('/auth/v1/verify',{method:'POST',body:{token_hash:tokenHash,type}});
+ acceptAuth(data);
+ $('homeLink').value='';$('syncLink').value='';
+ $('syncVerify').hidden=true;$('homeVerify').hidden=true;
+ $('backupDetails').open=false;
  message('Signed in · backing up automatically');schedule();
 }
-$('syncLogin').onclick=async()=>{try{await sendCode($('syncEmail').value)}catch(e){message(e.message,true)}};
-$('homeSendCode').onclick=async()=>{try{await sendCode($('homeEmail').value)}catch(e){message(e.message,true)}};
-$('syncConfirm').onclick=async()=>{try{await verifyCode($('syncCode').value)}catch(e){message(e.message,true)}};
-$('homeConfirm').onclick=async()=>{try{await verifyCode($('homeCode').value)}catch(e){message(e.message,true)}};
+$('syncLogin').onclick=async()=>{try{await sendLink($('syncEmail').value)}catch(e){message(e.message,true)}};
+$('homeSendCode').onclick=async()=>{try{await sendLink($('homeEmail').value)}catch(e){message(e.message,true)}};
+$('syncConfirm').onclick=async()=>{try{await verifyLink($('syncLink').value)}catch(e){message(e.message,true)}};
+$('homeConfirm').onclick=async()=>{try{await verifyLink($('homeLink').value)}catch(e){message(e.message,true)}};
 $('syncLogout').onclick=async()=>{
  try{const t=await token();if(t)await request('/auth/v1/logout',{method:'POST',token:t})}catch{}
  persistAuth(null);message('Signed out. Local workouts are still saved.');
