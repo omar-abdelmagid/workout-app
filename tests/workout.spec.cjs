@@ -59,7 +59,7 @@ test('weights and checked exercises survive tabs, sheets, and reload', async ({ 
 test('alternative picker cancels, applies, and restores an exercise', async ({ page }) => {
   await start(page);
   const button = page.locator('[data-action="swap"]').first();
-  const card = page.locator('.exercise').filter({ has: button });
+  const card = page.locator('.exercise').filter({ has: page.locator('[data-action="swap"]') }).first();
   const original = await card.locator('.check strong').innerText();
   await button.click();await page.getByText('Cancel', { exact: true }).click();
   await expect(card.locator('.check strong')).toHaveText(original);
@@ -97,16 +97,38 @@ test('discard cancellation preserves workout and confirm clears it', async ({ pa
   await onPage(page, 'home');expect((await saved(page)).active).toBeNull();
 });
 
-test('cached shell reloads offline with active workout', async ({ page, context }) => {
-  await start(page);
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+test('cached shell reloads when the server is unreachable', async ({ page }) => {
+  // WebKit's offline emulation rejects even service-worker responses (Playwright
+  // #42775). Drop real HTTP connections on an isolated origin instead, testing
+  // the actual cache fallback in both engines without changing browser internals.
+  const http = require('node:http');
+  let unavailable = false;
+  const root = path.join(__dirname, '..');
+  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml' };
+  const server = http.createServer((req, res) => {
+    if (unavailable) { req.socket.destroy(); return; }
+    const pathname = new URL(req.url, 'http://localhost').pathname;
+    const file = path.join(root, pathname === '/' ? 'index.html' : pathname);
+    fs.readFile(file, (error, content) => {
+      if (error) { res.writeHead(404);res.end();return; }
+      res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream' });res.end(content);
+    });
   });
-  await context.setOffline(true);await page.reload();await onPage(page, 'active');
-  await tab(page, 'programs');await onPage(page, 'programSection');
-  await tab(page, 'today');await onPage(page, 'active');
-  await context.setOffline(false);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    await page.goto(`http://127.0.0.1:${server.address().port}/`);await onPage(page, 'home');
+    await start(page);
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+    });
+    unavailable = true;server.closeAllConnections();
+    await page.reload();await onPage(page, 'active');
+    await tab(page, 'programs');await onPage(page, 'programSection');
+    await tab(page, 'today');await onPage(page, 'active');
+  } finally {
+    server.closeAllConnections();await new Promise(resolve => server.close(resolve));
+  }
 });
 
 test('mobile layout has no horizontal overflow or tab overlap', async ({ page }, testInfo) => {
