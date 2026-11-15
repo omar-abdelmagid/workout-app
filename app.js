@@ -67,7 +67,7 @@ const date=s=>new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle
 const initial=()=>({programId:'four',next:{four:0,five:0},sessions:[],active:null});
 let state;
 try { state=JSON.parse(localStorage.getItem(KEY))||initial(); if(!state.next||!Array.isArray(state.sessions)) throw Error('bad data'); } catch(e) {state=initial(); alert('Saved workout data could not be read. The app will start with a new local history.');}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){alert('Could not save workout locally. Check device storage before continuing.');throw e;}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));window.dispatchEvent(new Event('workout-local-saved'));}catch(e){alert('Could not save workout locally. Check device storage before continuing.');throw e;}}
 const program=()=>PROGRAMS.find(p=>p.id===state.programId)||PROGRAMS[0];
 const day=()=>program().days[state.next[program().id]%program().days.length];
 const allDone=s=>s.exercises.every(e=>e.done);
@@ -187,6 +187,7 @@ $('export').onclick=()=>{
 const blob=new Blob([JSON.stringify({exportedAt:now(),version:1,...state},null,2)],{type:'application/json'});
 const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='workout-history-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
+window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;render();}}catch{}});
 $('navHistory').onclick=()=>showSection('historySection');
 $('homeHistory').onclick=()=>showSection('historySection');
 $('homePrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
