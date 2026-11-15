@@ -92,6 +92,7 @@ const imageHtml=name=>{
 };
 
 const $=id=>document.getElementById(id);
+const ask=(text,title)=>window.WorkoutUI.confirm(text,title);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const now=()=>new Date().toISOString();
 const date=s=>new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
@@ -199,9 +200,19 @@ if(el.value===''||(Number.isFinite(Number(el.value))&&Number(el.value)>=0)){ex.w
 };
 $('exercises').onclick=e=>{
 const b=e.target.closest('button[data-action]');if(!b||!state.active)return;
-if(b.dataset.action==='weightToggle'){const panel=$('exercises').querySelector('[data-weight-panel="'+b.dataset.index+'"]');panel.hidden=!panel.hidden;if(!panel.hidden)panel.querySelector('input').focus();return;}
+if(b.dataset.action==='weightToggle'){
+ const index=Number(b.dataset.index),ex=state.active.exercises[index];
+ window.WorkoutUI.editWeight({name:ex.name,value:ex.weight,onInput:value=>{
+  if(!state.active||state.active.exercises[index]!==ex)return;
+  ex.weight=value;save();
+  const input=$('exercises').querySelector('[data-index="'+index+'"][data-action="weight"]');
+  if(input)input.value=value;
+  b.textContent=value!==''?'⚖ '+value+' lb · Edit':'＋ Max weight';
+ }});return;
+}
 if(b.dataset.action!=='swap')return;
 const ex=state.active.exercises[Number(b.dataset.index)];
+window.WorkoutUI.chooseAlternative({name:ex.name,alternative:ex.substituted?'Use original: '+ex.originalName:'Use alternative: '+ex.alternative,onSelect:()=>{
 if(!ex.substituted){ex.originalName=ex.name;ex.name=ex.alternative;ex.substituted=true;}
 else{ex.name=ex.originalName;ex.substituted=false;}
 save();
@@ -218,25 +229,26 @@ if(pictureImg){
 card.querySelector('.check strong').textContent=ex.name;
 card.querySelector('[data-action="swap"]').textContent=ex.substituted?'Use original':'Use alternative';
 card.querySelector('small.muted').textContent='Alternative: '+(ex.substituted?(ex.originalName||'Original exercise'):ex.alternative);
+}});
 };
-$('finish').onclick=()=>{
+$('finish').onclick=async()=>{
 const s=state.active;if(!s)return;
 const done=s.exercises.filter(e=>e.done).length;
-if(done===0&&!confirm('No exercises are checked. Finish this workout anyway?'))return;
-if(done<s.exercises.length&&!confirm('Only '+done+' of '+s.exercises.length+' exercises are checked. Finish anyway?'))return;
+if(done<s.exercises.length&&!await ask(done===0?'No exercises are checked. Finish this workout anyway?':'Only '+done+' of '+s.exercises.length+' exercises are checked. Finish anyway?','Finish workout?'))return;
+if(state.active!==s)return;
 s.endedAt=now();state.sessions.push(s);state.next[s.programId]=(s.dayIndex+1)%(PROGRAMS.find(p=>p.id===s.programId)?.days.length||s.dayIndex+1);state.active=null;
 save();render();
 $('workoutSuccessText').textContent=s.dayName+' saved · '+done+' of '+s.exercises.length+' activities completed.';
 $('workoutSuccess').hidden=false;
 showSection('home');
 };
-$('discard').onclick=()=>{if(!state.active||!confirm('Discard this in-progress workout? This cannot be undone.'))return;state.active=null;save();render();showSection('home');};
-$('historyList').onclick=e=>{
+$('discard').onclick=async()=>{if(!state.active||!await ask('Discard this in-progress workout? This cannot be undone.','Discard workout?'))return;state.active=null;save();render();showSection('home');};
+$('historyList').onclick=async e=>{
 const deleteButton=e.target.closest('[data-delete-history]');
 if(deleteButton){
  const id=deleteButton.dataset.deleteHistory;
  const session=state.sessions.find(x=>x.id===id);
- if(!session||!confirm('Delete '+session.dayName+' from '+date(session.startedAt)+'? This permanently removes the session from History, Progress, and cloud backup.'))return;
+ if(!session||!await ask('Delete '+session.dayName+' from '+date(session.startedAt)+'? This permanently removes the session from History, Progress, and cloud backup.','Delete workout?'))return;
  // Record the deletion before changing the history so offline/cloud reconciliation cannot restore it.
  const key='workout_pending_session_deletions_v1';
  let pending=[];try{pending=JSON.parse(localStorage.getItem(key)||'[]')}catch{}
@@ -252,9 +264,9 @@ const b=e.target.closest('[data-history]');if(!b)return;
 const s=state.sessions.find(x=>x.id===b.dataset.history);if(!s)return;
 $('detailsTitle').textContent=s.dayName+' · '+date(s.startedAt);
 $('detailsBody').innerHTML='<p class="muted">Started: '+date(s.startedAt)+'<br>Finished: '+date(s.endedAt)+'</p>'+s.exercises.map(x=>'<p>'+ (x.done?'✓ ':'○ ')+esc(x.name)+' · '+x.sets+' × '+esc(x.reps)+(x.weight!==''?' · '+esc(x.weight)+' lb':'')+'</p>').join('');
-$('details').showModal();
+window.WorkoutUI.openSheet('details');
 };
-$('closeDetails').onclick=()=>$('details').close();
+$('closeDetails').onclick=()=>window.WorkoutUI.closeSheet('details');
 $('export').onclick=()=>{
 const blob=new Blob([JSON.stringify({exportedAt:now(),version:1,...state},null,2)],{type:'application/json'});
 const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='workout-history-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -264,7 +276,7 @@ $('navHistory').onclick=()=>showSection('historySection');
 $('homeHistory').onclick=()=>showSection('historySection');
 $('homePrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
 $('homeProgress').onclick=()=>{if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);showSection('progressSection');};
-$('backHome').onclick=()=>{$('backHome').hidden=true;showSection('home');};
+$('backHome').onclick=()=>{showSection('home');};
 $('historyBack').onclick=()=>showSection('home');
 $('backPrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
 $('programHome').onclick=()=>showSection('home');
@@ -303,10 +315,10 @@ $('selectProgram').onclick=()=>{
  state.programId=browsedProgram.id;if(!(state.programId in state.next))state.next[state.programId]=0;save();render();renderProgramDays(browsedProgram);renderProgramGrid();showSection('programDaysSection');
 };
 
-$('archiveProgram').onclick=()=>{
+$('archiveProgram').onclick=async()=>{
  if(!browsedProgram||state.active||browsedProgram.id===state.programId)return;
  const newValue=!browsedProgram.archived;
- if(newValue&&!confirm('Archive '+browsedProgram.name+'? You can restore it later.'))return;
+ if(newValue&&!await ask('Archive '+browsedProgram.name+'? You can restore it later.','Archive program?'))return;
  browsedProgram.archived=newValue;
  localStorage.setItem(PROGRAM_CACHE,JSON.stringify(PROGRAMS));
  window.dispatchEvent(new CustomEvent('workout-program-archive',{detail:{id:browsedProgram.id,archived:newValue}}));
@@ -324,11 +336,16 @@ window.addEventListener('workout-programs-updated',()=>{
 $('backProgress').onclick=()=>showSection('home');
 $('today').onclick=()=>{showSection('upcoming');$('backHome').hidden=false;};
 function showSection(id){
- if(state.active && id==='home')id='active';
- for(const section of ['home','upcoming','active','historySection','programSection','programDaysSection','daySection','progressSection'])$(section).hidden=section!==id;
- $('stickyProgress').hidden=!state.active||id!=='active';
- window.scrollTo(0,0);
+ if(state.active && (id==='home'||id==='upcoming'))id='active';
+ $('stickyProgress').hidden=!state.active;
+ window.WorkoutUI.navigate(id);
 }
+window.addEventListener('workout-tab',event=>{
+ if(event.detail==='programs')renderProgramGrid();
+ if(event.detail==='progress'&&window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);
+ if(event.detail==='today')showSection('home');
+ else window.WorkoutUI.selectTab(event.detail);
+});
 document.addEventListener('click',event=>{
  const b=event.target.closest('[data-image-name]');if(!b)return;
  const name=b.dataset.imageName,src=photoUrl(name);
@@ -336,9 +353,9 @@ document.addEventListener('click',event=>{
  $('imageLarge').hidden=!src;
  $('imageLarge').src=src||'';
  $('imageMissing').hidden=!!src;
- $('imageDialog').showModal();
+ window.WorkoutUI.openSheet('imageDialog');
 });
-$('closeImage').onclick=()=>$('imageDialog').close();
+$('closeImage').onclick=()=>window.WorkoutUI.closeSheet('imageDialog');
 $('imageLarge').onerror=()=>{$('imageLarge').hidden=true;$('imageMissing').hidden=false;};
 
 
