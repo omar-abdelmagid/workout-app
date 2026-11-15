@@ -41,3 +41,11 @@ For modifications to an existing plan, insert a **new** integer version and its 
 - Archiving a program hides it from the ordinary library but retains all versions and recorded sessions. The currently selected program cannot be archived from the app.
 - Exercise imagery is a bundled name-to-image lookup, so newly created exercises without known images display the fallback.
 - Device-key security is bearer-token based: keep the key private. Authentication is verified server-side, not by the repository.
+
+## Warm-up exercise groups (November 2026)
+
+Warm-ups are now exercise rows, not merely instructions. `workout_program_exercises.exercise_group` is either `warmup` or `main` (default `main`). Existing `four` and `five` program version 1 remains unchanged; program version 2 contains 38 warm-up exercise rows across nine days and preserves the 54 original main exercise rows. Existing sessions keep their original version references.
+
+For ChatGPT-created programs, create warm-up exercise rows with `exercise_group='warmup'`, followed by strength / mobility exercise rows with `exercise_group='main'`. Use contiguous `exercise_index` values within each day (warm-ups first). The API returns `warmupEx` and `ex` separately; the app records both groups in each active workout's `exercises` array and shows warm-ups first, with checkboxes. Warm-ups can use one set and a descriptive duration or instruction in `reps`. Avoid putting the warm-up only in the day-level `warmup` text field.
+
+The day-level `warmup` text field remains as legacy fallback for older cached programs and unfinished workouts. Do not overwrite old recorded sessions or automatically reset an already-active workout during app upgrade.
