@@ -169,6 +169,7 @@ return `<article class="historyItem"><div><strong>${esc(s.dayName)}</strong><sma
 }).join(''):'<p class="muted">No completed workouts yet.</p>';
 }
 $('start').onclick=()=>{
+$('workoutSuccess').hidden=true;
 const p=program(),idx=(state.next[p.id]||0)%p.days.length,d=p.days[idx];
 state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programVersion:p.version||1,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:[...warmupExercises(d).map((e,i)=>exerciseSeed(e,i,'warmup')),...d.ex.map((e,i)=>exerciseSeed(e,i+warmupExercises(d).length,'main'))]};
 save();render();showSection('active');
@@ -224,7 +225,10 @@ const done=s.exercises.filter(e=>e.done).length;
 if(done===0&&!confirm('No exercises are checked. Finish this workout anyway?'))return;
 if(done<s.exercises.length&&!confirm('Only '+done+' of '+s.exercises.length+' exercises are checked. Finish anyway?'))return;
 s.endedAt=now();state.sessions.push(s);state.next[s.programId]=(s.dayIndex+1)%(PROGRAMS.find(p=>p.id===s.programId)?.days.length||s.dayIndex+1);state.active=null;
-save();render();showSection('historySection');
+save();render();
+$('workoutSuccessText').textContent=s.dayName+' saved · '+done+' of '+s.exercises.length+' activities completed.';
+$('workoutSuccess').hidden=false;
+showSection('home');
 };
 $('discard').onclick=()=>{if(!state.active||!confirm('Discard this in-progress workout? This cannot be undone.'))return;state.active=null;save();render();showSection('home');};
 $('historyList').onclick=e=>{

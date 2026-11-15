@@ -1,4 +1,4 @@
-const CACHE='workout-phase5-v21';
+const CACHE='workout-phase5-v22';
 const ASSETS=['./','./index.html','./app.js?v=21','./supabase-sync.js?v=21','./progress.js?v=21','./manifest.webmanifest','./icon.svg','./connection-test.html','./connection-test.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()])));
