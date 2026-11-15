@@ -7,7 +7,7 @@ const state=()=>JSON.parse(localStorage.getItem(STORE)||'{}');
 const config=()=>({url:'https://yipexqnkvwlvprhzstfr.supabase.co',key:'sb_publishable_TY6c1lHDtFrkpLqYCg9Tgg_IbleQFfT'});
 let auth=null,busy=false,refreshPromise=null,syncTimer=null;
 try{auth=JSON.parse(localStorage.getItem(AUTH)||'null')}catch{}
-const message=(text,error=false)=>{ $('syncStatus').textContent=text;const dot=$('backupDot');dot.className='backupDot '+(error?'error':text.includes('up to date')?'ok':text.includes('pending')?'warn':''); };
+const message=(text,error=false)=>{ $('homeLoginStatus').textContent=text; $('syncStatus').textContent=text;const dot=$('backupDot');dot.className='backupDot '+(error?'error':text.includes('up to date')?'ok':text.includes('pending')?'warn':''); };
 const persistAuth=value=>{auth=value;if(value)localStorage.setItem(AUTH,JSON.stringify(value));else localStorage.removeItem(AUTH);update()};
 const validConfig=()=>{const c=config();return /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(c.url||'')&&/^(sb_publishable_|eyJ)/.test(c.key||'')};
 const endpoint=()=>config().url.replace(/\/$/,'');
@@ -17,6 +17,7 @@ function update(){
  $('syncUser').textContent=auth?.user?.email||'Connected';
  $('syncAccount').hidden=!auth;
  $('syncAuth').hidden=!!auth;
+ $('homeLogin').hidden=!!auth;
  $('syncLogin').disabled=busy;
 }
 async function request(path,{method='GET',body,token,prefer}={}){
@@ -35,7 +36,7 @@ async function token(){
  if(Date.now()/1000 < (auth.expires_at||0)-90)return auth.access_token;
  if(!refreshPromise)refreshPromise=(async()=>{
   try{const result=await request('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:auth.refresh_token}});acceptAuth(result);return auth.access_token}
-  catch(e){persistAuth(null);message('Sign-in expired. Request a new email link.',true);throw e}
+  catch(e){persistAuth(null);message('Session expired. Sign in with an email code.',true);throw e}
  })().finally(()=>{refreshPromise=null});
  return refreshPromise;
 }
@@ -76,17 +77,27 @@ async function sync(){
  finally{busy=false;update()}
 }
 function schedule(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(()=>{syncTimer=null;sync()},1200)}
-$('syncEmail').value=localStorage.getItem('workout_supabase_email')||'';
-$('syncLogin').onclick=async()=>{
- try{
-  const email=$('syncEmail').value.trim();
-  if(!/^\S+@\S+\.\S+$/.test(email))throw Error('Enter a valid email address.');
-  localStorage.setItem('workout_supabase_email',email);
-  const redirect=location.origin+location.pathname;
-  await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true,email_redirect_to:redirect}});
-  message('Check your email for a sign-in link.');
- }catch(e){message(e.message,true)}
-};
+const savedEmail=localStorage.getItem('workout_supabase_email')||'';
+$('syncEmail').value=savedEmail;$('homeEmail').value=savedEmail;
+async function sendCode(email){
+ email=email.trim();if(!/^\\S+@\\S+\\.\\S+$/.test(email))throw Error('Enter a valid email address.');
+ localStorage.setItem('workout_supabase_email',email);
+ $('syncEmail').value=email;$('homeEmail').value=email;
+ await request('/auth/v1/otp',{method:'POST',body:{email,create_user:true}});
+ $('syncVerify').hidden=false;$('homeVerify').hidden=false;
+ message('Enter the 6-digit code sent to your email.');
+}
+async function verifyCode(code){
+ const email=localStorage.getItem('workout_supabase_email');
+ if(!/^\\d{6}$/.test(code))throw Error('Enter the six-digit code from your email.');
+ const data=await request('/auth/v1/verify',{method:'POST',body:{email,token:code,type:'email'}});
+ acceptAuth(data);$('syncVerify').hidden=true;$('homeVerify').hidden=true;
+ message('Signed in · backing up automatically');schedule();
+}
+$('syncLogin').onclick=async()=>{try{await sendCode($('syncEmail').value)}catch(e){message(e.message,true)}};
+$('homeSendCode').onclick=async()=>{try{await sendCode($('homeEmail').value)}catch(e){message(e.message,true)}};
+$('syncConfirm').onclick=async()=>{try{await verifyCode($('syncCode').value)}catch(e){message(e.message,true)}};
+$('homeConfirm').onclick=async()=>{try{await verifyCode($('homeCode').value)}catch(e){message(e.message,true)}};
 $('syncLogout').onclick=async()=>{
  try{const t=await token();if(t)await request('/auth/v1/logout',{method:'POST',token:t})}catch{}
  persistAuth(null);message('Signed out. Local workouts are still saved.');
@@ -115,5 +126,5 @@ window.addEventListener('workout-local-saved',()=>{update();if(auth)schedule()})
 window.addEventListener('workout-cloud-merged',update);
 window.addEventListener('visibilitychange',()=>{if(!document.hidden&&auth)schedule()});
 update();
-consumeRedirect().then(async()=>{if(auth){try{await token();schedule()}catch{}}else message('Local only · tap ⋯ to enable cloud backup')});
+consumeRedirect().then(async()=>{if(auth){try{await token();schedule()}catch{}}else message('Local only · sign in to enable automatic backup')});
 })();
