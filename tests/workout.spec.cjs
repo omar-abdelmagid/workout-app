@@ -144,3 +144,55 @@ test('mobile layout has no horizontal overflow or tab overlap', async ({ page },
   expect(finish.y + finish.height).toBeLessThanOrEqual(tabs.y);
   await page.screenshot({ path: testInfo.outputPath('workout.png') });
 });
+
+test('start briefing highlights the program and summarizes the workout without a list', async ({ page }, testInfo) => {
+  await page.locator('#today').click();await onPage(page, 'upcoming');
+  await expect(page.locator('#nextProgramName')).toHaveText('4-Day Hypertrophy');
+  await expect(page.locator('#nextTitle')).toHaveText('Lower A');
+  await expect(page.locator('#nextDay')).toHaveText('Day 1 of 4');
+  await expect(page.locator('#nextExerciseCount')).toHaveText('6');
+  await expect(page.locator('#nextSetCount')).toHaveText('15');
+  await expect(page.locator('#nextWarmupSummary')).toHaveText('6 activities before your main workout.');
+  await expect(page.locator('#nextFocus')).toContainText('Quads');
+  await expect(page.locator('#nextHistory')).toBeHidden();
+  await expect(page.locator('#upcoming')).not.toContainText('Leg Press');
+  expect(await page.locator('#upcoming .exercise, #upcoming ol, #upcoming ul').count()).toBe(0);
+  const sizes = await page.evaluate(() => ['nextProgramName', 'nextTitle'].map(id => parseFloat(getComputedStyle(document.getElementById(id)).fontSize)));
+  expect(sizes[0]).toBeGreaterThan(sizes[1]);
+  for (const width of [320, 393]) {
+    await page.setViewportSize({ width, height: 852 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.screenshot({ path: testInfo.outputPath('workout-start.png') });
+  await page.locator('#start').click();await onPage(page, 'active');
+  expect((await saved(page)).active.programName).toBe('4-Day Hypertrophy');
+});
+
+test('start briefing uses the selected program, day, and latest matching session', async ({ page }, testInfo) => {
+  await page.evaluate(key => {
+    const program = { id: 'custom', version: 2, name: 'Personal Strength & Mobility Program', description: 'A steady balance of strength and mobility.', days: [
+      { name: 'Recovery', ex: [['Custom stretch', 2, '30 sec', '']], warmup: '' },
+      { name: 'Full Body', focus: ['Strength', 'Mobility'], warmupEx: [['Easy movement', 1, '3 min', '']], ex: [['Custom movement', 3, '8–12', '']] },
+    ] };
+    localStorage.setItem('workout_programs_cache_v1', JSON.stringify([program]));
+    localStorage.setItem(key, JSON.stringify({ programId: 'custom', next: { custom: 1 }, active: null, sessions: [
+      { id: 'old-version', programId: 'custom', programVersion: 1, dayIndex: 1, endedAt: '2026-11-14T12:00:00Z', exercises: [] },
+      { id: 'matching', programId: 'custom', programVersion: 2, dayIndex: 1, endedAt: '2026-11-10T12:00:00Z', exercises: [] },
+      { id: 'different-day', programId: 'custom', programVersion: 2, dayIndex: 0, endedAt: '2026-11-15T12:00:00Z', exercises: [] },
+    ].map(session => ({ ...session, startedAt: session.endedAt, programName: program.name, dayName: 'Full Body' })) }));
+  }, KEY);
+  await page.reload();await onPage(page, 'home');
+  await page.locator('#today').click();await onPage(page, 'upcoming');
+  await expect(page.locator('#nextProgramName')).toHaveText('Personal Strength & Mobility Program');
+  await expect(page.locator('#nextProgramDescription')).toHaveText('A steady balance of strength and mobility.');
+  await expect(page.locator('#nextDay')).toHaveText('Day 2 of 2');
+  await expect(page.locator('#nextTitle')).toHaveText('Full Body');
+  await expect(page.locator('#nextExerciseCount')).toHaveText('1');
+  await expect(page.locator('#nextSetCount')).toHaveText('3');
+  await expect(page.locator('#nextWarmupSummary')).toHaveText('1 activity before your main workout.');
+  await expect(page.locator('#nextLastCompleted')).toHaveAttribute('datetime', '2026-11-10T12:00:00Z');
+  await expect(page.locator('#upcoming')).not.toContainText('Custom movement');
+  await page.setViewportSize({ width: 320, height: 852 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('workout-start-long-name.png') });
+});

@@ -76,3 +76,35 @@ header.mainHeader { padding: 18px 0 4px; }
 #closeDetails { width: 100%; margin-top: 20px; }
 @media (max-width: 360px) { .page-content { padding-left: 14px; padding-right: 14px; } .exerciseImage { width: 86px; height: 100px; flex-basis: 86px; } .check strong { font-size: 14px; } .homeHero { padding: 20px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+
+/* A concise briefing before starting; program identity comes first. */
+.workoutStart .backButton { margin-bottom: 12px; }
+.startHeading { display: block; padding: 6px 0 24px; }
+.startHeading .eyebrow { margin: 0 0 10px; font-size: 11px; letter-spacing: 1.4px; font-weight: 700; }
+.startHeading h1 { font-size: clamp(28px, 8.5vw, 36px); line-height: 1.12; letter-spacing: -1.2px; margin: 0; overflow-wrap: anywhere; }
+.startDescription { margin: 14px 0 0; font-size: 14px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.startOverview { padding: 24px; background: #fff; border-radius: 24px; box-shadow: 0 3px 18px #00000003; }
+.startDayRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
+.startDayBadge { padding: 7px 12px; border-radius: 20px; background: #f0f0f4; font-size: 12px; font-weight: 650; color: #52525b; }
+.startWorkoutIcon { width: 26px; height: 26px; color: #4f4f57; }
+.startTodayLabel { font-size: 10px; letter-spacing: 1.2px; margin: 0 0 8px; font-weight: 700; }
+.startOverview #nextTitle { font-size: 27px; line-height: 1.15; margin: 0; overflow-wrap: anywhere; }
+.startFocus { font-size: 14px; line-height: 1.6; color: #71717a; margin: 10px 0 0; }
+.startStats { display: grid; grid-template-columns: 1fr 1fr; margin: 24px 0 22px; padding-top: 22px; border-top: 1px solid #efeff3; }
+.startStats > div + div { border-left: 1px solid #efeff3; padding-left: 24px; }
+.startStats dt { font-size: 12px; color: #71717a; margin-bottom: 7px; }
+.startStats dd { font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -.8px; margin: 0; font-variant-numeric: tabular-nums; }
+.startSequence { display: flex; gap: 5px; height: 4px; }
+.startSequence span { flex: 1; min-width: 0; border-radius: 3px; background: #ededf1; }
+.startSequence .current { background: #171717; }
+.startPreparation { display: flex; align-items: center; gap: 14px; padding: 22px 4px; }
+.startPrepIcon { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border-radius: 14px; font-size: 22px; color: #42664e; background: #e8efe9; }
+.startPreparation h3 { font-size: 15px; margin: 0 0 4px; }
+.startPreparation p { color: #71717a; font-size: 13px; line-height: 1.5; margin: 0; }
+.startHistory { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px; padding: 16px 4px; margin: 0; border-top: 1px solid #e7e7ec; font-size: 13px; }
+.startHistory span { color: #71717a; }
+.startHistory time { font-weight: 600; }
+.startAction { margin-top: 8px; }
+.startAction #start { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 58px; margin-top: 0; border-radius: 18px; }
+.startAction small { font-size: 11px; text-align: center; margin-top: 13px; color: #7a7a83; }
+@media (max-width: 360px) { .startOverview { padding: 20px; } .startHeading { padding-bottom: 20px; } }
