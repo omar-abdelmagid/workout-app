@@ -1,9 +1,10 @@
 (() => {
 'use strict';
 const $=id=>document.getElementById(id);
-const STORE='workout_tracker_phase1_v1',CONFIG='workout_supabase_config_v1',AUTH='workout_supabase_auth_v1';
+const STORE='workout_tracker_phase1_v1',AUTH='workout_supabase_auth_v1';
 const state=()=>JSON.parse(localStorage.getItem(STORE)||'{}');
-const config=()=>{try{return JSON.parse(localStorage.getItem(CONFIG)||'{}')}catch{return {}}};
+// Public client configuration. Database access is restricted by Supabase RLS.
+const config=()=>({url:'https://yipexqnkvwlvprhzstfr.supabase.co',key:'sb_publishable_TY6c1lHDtFrkpLqYCg9Tgg_IbleQFfT'});
 let auth=null,busy=false,refreshPromise=null,syncTimer=null;
 try{auth=JSON.parse(localStorage.getItem(AUTH)||'null')}catch{}
 const message=(text,error=false)=>{$('syncStatus').textContent=text;$('syncStatus').style.color=error?'#a22':'#555'};
@@ -76,20 +77,10 @@ async function sync(){
  finally{busy=false;update()}
 }
 function schedule(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(()=>{syncTimer=null;sync()},1200)}
-$('syncUrl').value=config().url||'';
-$('syncKey').value=config().key||'';
 $('syncEmail').value=localStorage.getItem('workout_supabase_email')||'';
-function storeConfig(){
- const url=$('syncUrl').value.trim().replace(/\/$/,'');
- const key=$('syncKey').value.trim();
- if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!/^(sb_publishable_|eyJ)/.test(key))throw Error('Enter your Supabase project URL and publishable key.');
- const before=config();
- if(auth&&(before.url!==url||before.key!==key))persistAuth(null);
- localStorage.setItem(CONFIG,JSON.stringify({url,key}));
-}
 $('syncLogin').onclick=async()=>{
  try{
-  storeConfig();const email=$('syncEmail').value.trim();
+  const email=$('syncEmail').value.trim();
   if(!/^\S+@\S+\.\S+$/.test(email))throw Error('Enter a valid email address.');
   localStorage.setItem('workout_supabase_email',email);
   const redirect=location.origin+location.pathname;
@@ -126,5 +117,5 @@ window.addEventListener('workout-local-saved',()=>{update();if(auth)schedule()})
 window.addEventListener('workout-cloud-merged',update);
 window.addEventListener('visibilitychange',()=>{if(!document.hidden&&auth)schedule()});
 update();
-consumeRedirect().then(async()=>{if(auth){try{await token();schedule()}catch{}}else if(validConfig())message('Sign in once to enable automatic cloud backup.');else message('One-time setup required: enter your Supabase project URL and publishable key.')});
+consumeRedirect().then(async()=>{if(auth){try{await token();schedule()}catch{}}else message('Sign in once to enable automatic cloud backup.')});
 })();
