@@ -132,3 +132,10 @@ header.mainHeader { padding: 18px 0 4px; }
 .stickyProgressHead > div:first-child { min-width:0; }
 .workoutStopwatch { display:flex; align-items:center; gap:5px; flex-shrink:0; font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; color:#171717; }
 .workoutStopwatch span { font-size:19px; font-weight:400; color:#68686f; }
+
+/* Instructions for the gentle mobility warm-up. */
+.warmupGuidance { margin:14px 0 2px; padding:14px; border-radius:14px; background:#f7f8f7; color:#262b28; font-size:13px; line-height:1.5; }
+.warmupGuidance > strong { display:block; font-size:14px; }
+.warmupGuidance ol { list-style:decimal; padding-left:20px; margin:9px 0; }
+.warmupGuidance li { margin:7px 0; }
+.warmupGuidance small { color:#5b655e; }
