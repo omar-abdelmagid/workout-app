@@ -25,7 +25,7 @@ const PHOTO={
 'Seated Hip Abduction':'Thigh_Abductor','Seated Hip Adduction':'Thigh_Adductor','Hip Thrust Machine':'Barbell_Hip_Thrust','Hip Thrust':'Barbell_Hip_Thrust','Low Step-Up':'Dumbbell_Step_Ups','Seated Hip Abduction':'Thigh_Abductor','Suitcase Carry':'Farmers_Walk',
 'Machine Chest Press':'Leverage_Chest_Press','Reverse Pec Deck':'Reverse_Machine_Flyes','Dumbbell Biceps Curl':'Dumbbell_Bicep_Curl','Cable Triceps Extension':'Cable_Rope_Overhead_Triceps_Extension','Pallof Press':'Pallof_Press',
 'Incline Machine Press':'Leverage_Incline_Chest_Press','Cable Fly':'Cable_Crossover','Hammer Curl':'Hammer_Curls','Calf Raise':'Standing_Calf_Raises','Chest-Supported Row':'Chest-Supported_Dumbbell_Row','Supported Machine Shoulder Press':'Machine_Shoulder_(Military)_Press','Face Pull':'Face_Pull','Cable Scaption':'Front_Cable_Raise',
-'Pallof Press (Light)':'Pallof_Press','Side Plank':'Side_Bridge','Cat-Cow':'Cat_Stretch',"Child's Pose":'Childs_Pose','Dead Bug':'Dead_Bug','Bird Dog':'Bird_Dog','Wall Slides':'Wall_Slide','Hip Flexor Stretch':'Kneeling_Hip_Flexor','Knee-to-Chest':'Knee_Across_The_Body','Hamstring Mobility':'Standing_Hamstring_and_Calf_Stretch','Thoracic Rotation':'Side_Lying_Floor_Stretch','Supported 90/90 Hip Switches':'90_90_Hamstring'
+'Pallof Press (Light)':'Pallof_Press','Side Plank':'Side_Bridge','Cat-Cow':'Cat_Stretch',"Child's Pose":'Childs_Pose','Dead Bug':'Dead_Bug','Bird Dog':'Bird_Dog','Wall Slides':'Shoulder_Stretch','Hip Flexor Stretch':'Kneeling_Hip_Flexor','Knee-to-Chest':'Knee_Across_The_Body','Hamstring Mobility':'Standing_Hamstring_and_Calf_Stretch','Thoracic Rotation':'Side-Lying_Floor_Stretch','Supported 90/90 Hip Switches':'90_90_Hamstring'
 };
 
 // Verified exercise-library image IDs for the workout substitutions.
@@ -99,8 +99,10 @@ const photoUrl=name=>{
  const id=PHOTO[name]||ALTERNATIVE_PHOTO[name]||warmupImageId(name);
  return id?'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'+encodeURIComponent(id)+'/0.jpg':'';
 };
+// Local illustration for Bird Dog: this movement is absent from the exercise photo library.
+const birdDogSvg='<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240"><rect width="320" height="240" rx="20" fill="#f3f6f4"/><g fill="none" stroke="#24634e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"><path d="M115 132 L205 127 L255 91"/><path d="M116 132 L77 92 L35 83"/><path d="M130 137 L111 188 L86 192"/><path d="M200 132 L227 182 L250 189"/></g><circle cx="112" cy="118" r="17" fill="#24634e"/><path d="M22 208 H298" stroke="#aabbb3" stroke-width="3"/><text x="160" y="225" text-anchor="middle" fill="#24634e" font-family="Arial" font-size="14">Opposite arm + leg reach</text></svg>';
 const imageHtml=name=>{
- const src=photoUrl(name);
+ const src=name==='Bird Dog'?'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(birdDogSvg):photoUrl(name);
  return '<button type="button" class="exerciseImage" data-image-name="'+esc(name)+'" aria-label="Expand '+esc(name)+' image">'+(src?'<img loading="lazy" src="'+src+'" alt="'+esc(name)+' exercise" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="imageFallback" hidden>Image unavailable</span>':'<span class="imageFallback">Image unavailable</span>')+'</button>';
 };
 
