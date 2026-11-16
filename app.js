@@ -159,6 +159,16 @@ function renderUpcoming(){
  $('homeNext').textContent='Next: '+d.name;
  $('homeFocus').textContent=focus||'Strength training';
 }
+function renderExerciseCard(e,i,readOnly=false){
+ const warm=e.group==='warmup';
+ return `<article class="exercise ${!readOnly&&e.done?'done':''} ${warm?'warmupExercise':''}" data-exercise="${i}">
+<div class="exerciseTop">${imageHtml(e.name)}<div class="${readOnly?'exercisePreviewLabel':'check'}">${readOnly?'':`<input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}>`}<span><strong>${esc(e.name)}</strong><small>${warm?'Warm-up${readOnly?'':' · mark complete'}':e.sets+' sets × '+esc(e.reps)}</small></span></div></div>
+${warm?warmupGuidance(e.name):readOnly?`<small class="muted">Alternative: ${esc(e.alternative||"None")}</small>`:`<div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
+<button type="button" class="subtle" data-index="${i}" data-action="swap">${e.substituted?'Use original':'Use alternative'}</button></div>
+<div class="weightPanel" data-weight-panel="${i}" hidden><label>Max weight (lb, optional)<input type="number" min="0" step="0.5" inputmode="decimal" placeholder="—" data-index="${i}" data-action="weight" value="${esc(e.weight)}"></label></div>
+<small class="muted">Alternative: ${esc(e.substituted?e.originalName||'Original exercise':e.alternative)}</small>`}
+</article>`;
+}
 function renderActive(){
 const s=state.active,completed=s.exercises.filter(e=>e.done).length;
 $('activeTitle').textContent=s.dayName;
@@ -170,16 +180,7 @@ $('stickyText').textContent=s.dayName+' · '+completed+'/'+s.exercises.length;
 $('stickyProgram').textContent=s.programName;
 updateWorkoutElapsed();
 const exercises=s.exercises||[];
-const renderOne=(e,i)=>{
- const warm=e.group==='warmup';
- return `<article class="exercise ${e.done?'done':''} ${warm?'warmupExercise':''}" data-exercise="${i}">
-<div class="exerciseTop">${imageHtml(e.name)}<label class="check"><input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}><span><strong>${esc(e.name)}</strong><small>${warm?'Warm-up · mark complete':e.sets+' sets × '+esc(e.reps)}</small></span></label></div>
-${warm?warmupGuidance(e.name):`<div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
-<button type="button" class="subtle" data-index="${i}" data-action="swap">${e.substituted?'Use original':'Use alternative'}</button></div>
-<div class="weightPanel" data-weight-panel="${i}" hidden><label>Max weight (lb, optional)<input type="number" min="0" step="0.5" inputmode="decimal" placeholder="—" data-index="${i}" data-action="weight" value="${esc(e.weight)}"></label></div>
-<small class="muted">Alternative: ${esc(e.substituted?e.originalName||'Original exercise':e.alternative)}</small>`}
-</article>`;
-};
+const renderOne=(e,i)=>renderExerciseCard(e,i);
 const warmList=exercises.map((e,i)=>({e,i})).filter(x=>x.e.group==='warmup');
 const mainList=exercises.map((e,i)=>({e,i})).filter(x=>x.e.group!=='warmup');
 const legacyWarmups=!warmList.length&&s.warmup?String(s.warmup).split(/\s*[·•\n]\s*/).map(x=>x.trim()).filter(Boolean):[];
@@ -343,8 +344,8 @@ $('programDaysList').onclick=e=>{
  const i=Number(b.dataset.day),d=browsedProgram.days[i];if(!d)return;
  $('dayTitle').textContent=d.name;
  $('dayMeta').textContent=browsedProgram.name+' · Day '+(i+1)+' of '+browsedProgram.days.length;
- $('dayWarmup').innerHTML='<ul class="warmupList">'+warmupExercises(d).map(ex=>'<li>'+esc(ex[0])+warmupGuidance(ex[0])+'</li>').join('')+'</ul>';
- $('dayExercises').innerHTML=d.ex.map(ex=>'<li class="previewItem">'+imageHtml(ex[0])+'<span><strong>'+esc(ex[0])+'</strong><small>'+ex[1]+' sets × '+esc(ex[2])+'</small></span></li>').join('');
+ $('dayWarmup').innerHTML=warmupExercises(d).map((ex,i)=>renderExerciseCard(exerciseSeed(ex,i,'warmup'),i,true)).join('');
+ $('dayExercises').innerHTML=d.ex.map((ex,i)=>renderExerciseCard(exerciseSeed(ex,i,'main'),i,true)).join('');
  showSection('daySection');
 };
 $('selectProgram').onclick=()=>{
@@ -380,7 +381,7 @@ window.addEventListener('workout-programs-updated',()=>{
      $('dayTitle').textContent=d.name;
      $('dayMeta').textContent=refreshed.name+' · Day '+(index+1)+' of '+refreshed.days.length;
      $('dayWarmup').innerHTML='<ul class="warmupList">'+warmupExercises(d).map(ex=>'<li>'+esc(ex[0])+'</li>').join('')+'</ul>';
-     $('dayExercises').innerHTML=d.ex.map(ex=>'<li class="previewItem">'+imageHtml(ex[0])+'<span><strong>'+esc(ex[0])+'</strong><small>'+ex[1]+' sets × '+esc(ex[2])+'</small></span></li>').join('');
+     $('dayExercises').innerHTML=d.ex.map((ex,i)=>renderExerciseCard(exerciseSeed(ex,i,'main'),i,true)).join('');
     }
    }
   }
