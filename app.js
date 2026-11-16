@@ -353,8 +353,26 @@ window.addEventListener('workout-programs-updated',()=>{
  PROGRAMS=cached.filter(p=>p&&p.id&&Array.isArray(p.days)&&p.days.length);
  if(!PROGRAMS.length)PROGRAMS=DEFAULT_PROGRAMS;
  if(!PROGRAMS.some(p=>p.id===state.programId)){state.programId=PROGRAMS[0].id;save()}
- if(!state.active){render();renderProgramGrid()}
- }catch{}
+ // Refresh program browsing even while a workout is active. Active workouts retain their snapshot.
+ render();renderProgramGrid();
+ if(browsedProgram){
+  const refreshed=PROGRAMS.find(p=>p.id===browsedProgram.id);
+  if(refreshed){
+   renderProgramDays(refreshed);
+   // Refresh the currently viewed exercise details without changing the selected day.
+   const currentDay=$('dayMeta').textContent.match(/Day (\\d+) of/);
+   if(currentDay){
+    const index=Number(currentDay[1])-1,d=refreshed.days[index];
+    if(d){
+     $('dayTitle').textContent=d.name;
+     $('dayMeta').textContent=refreshed.name+' · Day '+(index+1)+' of '+refreshed.days.length;
+     $('dayWarmup').innerHTML='<ul class="warmupList">'+warmupExercises(d).map(ex=>'<li>'+esc(ex[0])+'</li>').join('')+'</ul>';
+     $('dayExercises').innerHTML=d.ex.map(ex=>'<li class="previewItem">'+imageHtml(ex[0])+'<span><strong>'+esc(ex[0])+'</strong><small>'+ex[1]+' sets × '+esc(ex[2])+'</small></span></li>').join('');
+    }
+   }
+  }
+ }
+ }catch(e){console.warn('Unable to refresh cloud programs',e)}
 });
 
 $('backProgress').onclick=()=>showSection('home');
