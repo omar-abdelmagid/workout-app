@@ -95,7 +95,7 @@ const $=id=>document.getElementById(id);
 const ask=(text,title)=>window.WorkoutUI.confirm(text,title);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const now=()=>new Date().toISOString();
-const date=s=>new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
+const date=s=>new Date(s).toLocaleString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 const initial=()=>({programId:'four',next:{four:0,five:0},sessions:[],active:null});
 let state;
 try { state=JSON.parse(localStorage.getItem(KEY))||initial(); if(!state.next||!Array.isArray(state.sessions)) throw Error('bad data'); } catch(e) {state=initial(); alert('Saved workout data could not be read. The app will start with a new local history.');}
@@ -145,7 +145,7 @@ function renderUpcoming(){
  const previous=state.sessions.filter(session=>session.programId===p.id&&session.dayIndex===i&&Number.isFinite(Date.parse(session.endedAt)))
   .sort((a,b)=>Date.parse(b.endedAt)-Date.parse(a.endedAt))[0];
  $('homeLastCompletedRow').hidden=!previous;
- $('homeLastCompleted').textContent=previous?new Date(previous.endedAt).toLocaleDateString(undefined,{dateStyle:'medium'}):'';
+ $('homeLastCompleted').textContent=previous?new Date(previous.endedAt).toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'short',day:'numeric'}):'';
 
  $('homeNext').textContent='Next: '+d.name;
  $('homeFocus').textContent=focus||'Strength training';
