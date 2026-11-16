@@ -1,4 +1,4 @@
-const CACHE='workout-ios-v30';
+const CACHE='workout-ios-v31';
 const ASSETS=['./','./index.html','./app.js?v=30','./native-ui.js?v=30','./native-ui.css?v=30','./supabase-sync.js?v=30','./progress.js?v=30','./vendor/framework7/framework7-bundle.min.js','./vendor/framework7/framework7-bundle.min.css','./manifest.webmanifest','./icon.svg','./connection-test.html','./connection-test.js'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('workout-')&&k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()])));
