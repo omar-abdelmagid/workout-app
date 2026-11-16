@@ -12,7 +12,7 @@ const PHOTO={
 'Hip Thrust Machine':'Barbell_Hip_Thrust','Hip Thrust':'Barbell_Hip_Thrust','Low Step-Up':'Dumbbell_Step_Ups','Seated Hip Abduction':'Thigh_Abductor','Suitcase Carry':'Farmers_Walk',
 'Machine Chest Press':'Leverage_Chest_Press','Reverse Pec Deck':'Reverse_Machine_Flyes','Dumbbell Biceps Curl':'Dumbbell_Bicep_Curl','Cable Triceps Extension':'Cable_Rope_Overhead_Triceps_Extension','Pallof Press':'Pallof_Press',
 'Incline Machine Press':'Leverage_Incline_Chest_Press','Cable Fly':'Cable_Crossover','Hammer Curl':'Hammer_Curls','Calf Raise':'Standing_Calf_Raises','Chest-Supported Row':'Chest-Supported_Dumbbell_Row','Supported Machine Shoulder Press':'Machine_Shoulder_(Military)_Press','Face Pull':'Face_Pull','Cable Scaption':'Front_Cable_Raise',
-'Dead Bug':'Dead_Bug','Bird Dog':'Bird_Dog','Wall Slides':'Wall_Slide','Hip Flexor Stretch':'Kneeling_Hip_Flexor','Knee-to-Chest':'Knee_Across_The_Body','Hamstring Mobility':'Standing_Hamstring_and_Calf_Stretch','Thoracic Rotation':'Side_Lying_Floor_Stretch','Supported 90/90 Hip Switches':'90_90_Hamstring'
+'Pallof Press (Light)':'Pallof_Press','Side Plank':'Side_Bridge','Cat-Cow':'Cat_Stretch',"Child's Pose":'Childs_Pose','Dead Bug':'Dead_Bug','Bird Dog':'Bird_Dog','Wall Slides':'Wall_Slide','Hip Flexor Stretch':'Kneeling_Hip_Flexor','Knee-to-Chest':'Knee_Across_The_Body','Hamstring Mobility':'Standing_Hamstring_and_Calf_Stretch','Thoracic Rotation':'Side_Lying_Floor_Stretch','Supported 90/90 Hip Switches':'90_90_Hamstring'
 };
 
 // Verified exercise-library image IDs for the workout substitutions.
