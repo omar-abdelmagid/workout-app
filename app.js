@@ -123,7 +123,8 @@ $('programName').textContent=program().name;
 $('homeProgram').textContent=program().name;
 // Navigation visibility is owned by showSection, not by data rendering.
 $('navHistory').textContent='History ('+state.sessions.length+')';
-if(state.active) renderActive(); else renderUpcoming();
+renderUpcoming();
+if(state.active) renderActive();
 renderHistory();
 if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);
 }
@@ -135,26 +136,17 @@ function renderUpcoming(){
  },0);
  const knownFocus={ 'Lower A':'Quads · Hamstrings · Calves · Core','Lower B':'Glutes · Hamstrings · Calves · Core','Upper A':'Chest · Back · Arms','Upper B':'Back · Chest · Arms','Legs':'Quads · Hamstrings · Glutes','Chest & Biceps':'Chest · Biceps','Back & Triceps':'Back · Triceps','Shoulders':'Shoulders · Rear delts','Mobility & Abs':'Mobility · Core' };
  const focus=Array.isArray(d.focus)?d.focus.join(' · '):typeof d.focus==='string'?d.focus:knownFocus[d.name]||'';
- $('nextProgramName').textContent=p.name;
- const description=typeof p.description==='string'?p.description.trim():'';
- $('nextProgramDescription').textContent=description;
- $('nextProgramDescription').hidden=!description;
- $('nextDay').textContent='Day '+(i+1)+' of '+p.days.length;
- $('nextTitle').textContent=d.name;
- $('nextFocus').textContent=focus;
- $('nextFocus').hidden=!focus;
- $('nextExerciseCount').textContent=d.ex.length;
- $('nextSetCount').textContent=sets;
- $('nextSequence').innerHTML=p.days.map((_,index)=>'<span'+(index===i?' class="current"':'')+'></span>').join('');
- $('nextWarmupSection').hidden=warmups.length===0;
- $('nextWarmupSummary').textContent=warmups.length+' '+(warmups.length===1?'activity':'activities')+' before your main workout.';
- const previous=state.sessions.filter(session=>session.programId===p.id&&session.dayIndex===i&&
-  (!p.version||(session.programVersion||1)===p.version)&&Number.isFinite(Date.parse(session.endedAt)))
+ $('homeDay').textContent='Day '+(i+1)+' of '+p.days.length;
+ $('homeExerciseCount').textContent=d.ex.length;
+ $('homeSetCount').textContent=sets;
+ $('homeSequence').innerHTML=p.days.map((_,index)=>'<span'+(index===i?' class="current"':'')+'></span>').join('');
+ $('homeWarmup').hidden=warmups.length===0;
+ $('homeWarmupSummary').textContent=warmups.length+' '+(warmups.length===1?'activity':'activities')+' before your main workout.';
+ const previous=state.sessions.filter(session=>session.programId===p.id&&session.dayIndex===i&&Number.isFinite(Date.parse(session.endedAt)))
   .sort((a,b)=>Date.parse(b.endedAt)-Date.parse(a.endedAt))[0];
- $('nextHistory').hidden=!previous;
- $('nextLastCompleted').textContent=previous?new Date(previous.endedAt).toLocaleDateString(undefined,{dateStyle:'medium'}):'';
- if(previous)$('nextLastCompleted').dateTime=previous.endedAt;
- else $('nextLastCompleted').removeAttribute('datetime');
+ $('homeLastCompletedRow').hidden=!previous;
+ $('homeLastCompleted').textContent=previous?new Date(previous.endedAt).toLocaleDateString(undefined,{dateStyle:'medium'}):'';
+
  $('homeNext').textContent='Next: '+d.name;
  $('homeFocus').textContent=focus||'Strength training';
 }
@@ -193,12 +185,12 @@ const done=s.exercises.filter(e=>e.done).length;
 return `<article class="historyItem"><div><strong>${esc(s.dayName)}</strong><small>${esc(s.programName)} · ${date(s.startedAt)}</small><small>${done}/${s.exercises.length} exercises · ${Math.max(1,Math.round((new Date(s.endedAt)-new Date(s.startedAt))/60000))} min</small></div><div class="historyActions"><button class="subtle" data-history="${esc(s.id)}">Details</button><button class="historyDelete" type="button" data-delete-history="${esc(s.id)}" aria-label="Delete ${esc(s.dayName)} workout">Delete</button></div></article>`;
 }).join(''):'<p class="muted">No completed workouts yet.</p>';
 }
-$('start').onclick=()=>{
+function startWorkout(){
 $('workoutSuccess').hidden=true;
 const p=program(),idx=(state.next[p.id]||0)%p.days.length,d=p.days[idx];
 state.active={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),programId:p.id,programVersion:p.version||1,programName:p.name,dayIndex:idx,dayName:d.name,warmup:d.warmup,startedAt:now(),exercises:[...warmupExercises(d).map((e,i)=>exerciseSeed(e,i,'warmup')),...d.ex.map((e,i)=>exerciseSeed(e,i+warmupExercises(d).length,'main'))]};
 save();render();showSection('active');
-};
+}
 $('exercises').onchange=e=>{
 const el=e.target,i=Number(el.dataset.index),s=state.active;if(!s||!Number.isInteger(i)||!s.exercises[i])return;
 if(el.dataset.action==='done')s.exercises[i].done=el.checked;
@@ -300,7 +292,7 @@ $('navHistory').onclick=()=>showSection('historySection');
 $('homeHistory').onclick=()=>showSection('historySection');
 $('homePrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
 $('homeProgress').onclick=()=>{if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);showSection('progressSection');};
-$('backHome').onclick=()=>{showSection('home');};
+
 $('historyBack').onclick=()=>showSection('home');
 $('backPrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
 $('programHome').onclick=()=>showSection('home');
@@ -376,9 +368,10 @@ window.addEventListener('workout-programs-updated',()=>{
 });
 
 $('backProgress').onclick=()=>showSection('home');
-$('today').onclick=()=>{showSection('upcoming');$('backHome').hidden=false;};
+$('today').onclick=startWorkout;
 function showSection(id){
- if(state.active && (id==='home'||id==='upcoming'))id='active';
+ if(id==='upcoming')id='home';
+ if(state.active && id==='home')id='active';
  $('stickyProgress').hidden=!state.active;
  window.WorkoutUI.navigate(id);
 }
