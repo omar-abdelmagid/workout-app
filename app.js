@@ -360,7 +360,7 @@ window.addEventListener('workout-programs-updated',()=>{
   if(refreshed){
    renderProgramDays(refreshed);
    // Refresh the currently viewed exercise details without changing the selected day.
-   const currentDay=$('dayMeta').textContent.match(/Day (\\d+) of/);
+   const currentDay=$('dayMeta').textContent.match(/Day (\d+) of/);
    if(currentDay){
     const index=Number(currentDay[1])-1,d=refreshed.days[index];
     if(d){
