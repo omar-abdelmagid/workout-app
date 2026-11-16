@@ -57,7 +57,7 @@ function reconcileRemoteState(remote,local){
  // On a previously used device, local changes take precedence at first migration.
  const hasLocalHistory=(local.sessions||[]).length>0||!!local.active||local.programId!=='four'||Object.values(local.next||{}).some(n=>n>0);
  if(!seen&&hasLocalHistory)return false;
- if(seen&&remote.updated_at<=seen)return false;
+ if(seen&&remote.updated_at&&remote.updated_at<=seen)return false;
  const next=remote.next_days||{};
  local.next={...next,...(local.active?{[local.active.programId]:local.next?.[local.active.programId]||0}:{})};
  if(!local.active)local.active=remote.active_workout||null;
@@ -111,13 +111,13 @@ async function sync(){
    schedule();
   }
   const current=read();
-  if(current.programId){
+  if(current.programId&&(localStorage.getItem(STATE_DIRTY)==='1'||!data.appState)){
    const snapshot=JSON.stringify({selectedProgramId:current.programId,next:current.next||{},active:current.active||null});
    await request(deviceKey,'POST',{sessions:[],appState:JSON.parse(snapshot)});
    if(JSON.stringify({selectedProgramId:read().programId,next:read().next||{},active:read().active||null})===snapshot){
     localStorage.removeItem(STATE_DIRTY);
    }else schedule();
-   localStorage.setItem(SYNC_STATE_AT,new Date().toISOString());
+   localStorage.removeItem(SYNC_STATE_AT);
   }
   message('Cloud backup up to date ✓'+(recovered?' · '+recovered+' restored':''));
  }catch(e){message('Backup pending: '+e.message,true)}
