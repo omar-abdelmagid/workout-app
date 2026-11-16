@@ -159,6 +159,7 @@ $('bar').style.width=(100*completed/s.exercises.length)+'%';
 $('stickyBar').style.width=(100*completed/s.exercises.length)+'%';
 $('stickyText').textContent=s.dayName+' · '+completed+'/'+s.exercises.length;
 $('stickyProgram').textContent=s.programName;
+updateWorkoutElapsed();
 const exercises=s.exercises||[];
 const renderOne=(e,i)=>{
  const warm=e.group==='warmup';
@@ -201,6 +202,17 @@ if(el.dataset.action==='done'){
  updateProgress();
 }
 }; 
+function updateWorkoutElapsed(){
+ const el=$('workoutElapsed'),s=state.active;
+ if(!el||!s)return;
+ const start=Date.parse(s.startedAt);
+ const seconds=Number.isFinite(start)?Math.max(0,Math.floor((Date.now()-start)/1000)):0;
+ const hours=Math.floor(seconds/3600),minutes=Math.floor(seconds%3600/60),remaining=seconds%60;
+ const pad=n=>String(n).padStart(2,'0');
+ el.textContent=hours?hours+':'+pad(minutes)+':'+pad(remaining):pad(minutes)+':'+pad(remaining);
+}
+setInterval(updateWorkoutElapsed,1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateWorkoutElapsed();});
 function updateProgress(){
  const s=state.active;if(!s)return;
  const completed=s.exercises.filter(e=>e.done).length;
