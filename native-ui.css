@@ -108,3 +108,8 @@ header.mainHeader { padding: 18px 0 4px; }
 .startAction #start { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 58px; margin-top: 0; border-radius: 18px; }
 .startAction small { font-size: 11px; text-align: center; margin-top: 13px; color: #7a7a83; }
 @media (max-width: 360px) { .startOverview { padding: 20px; } .startHeading { padding-bottom: 20px; } }
+
+/* Compact image viewer dismiss control; prevent global button sizing from stretching it. */
+#imageDialog .imageDialogHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#imageDialog .imageDialogHead #imageTitle { flex: 1 1 auto; min-width: 0; }
+#imageDialog #closeImage { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; max-width: 44px; min-height: 44px; padding: 0; margin: 0; border: 0; border-radius: 50%; background: #efeff3; color: #171717; font-size: 20px; line-height: 1; }
