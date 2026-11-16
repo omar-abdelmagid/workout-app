@@ -162,7 +162,7 @@ function renderUpcoming(){
 function renderExerciseCard(e,i,readOnly=false){
  const warm=e.group==='warmup';
  return `<article class="exercise ${!readOnly&&e.done?'done':''} ${warm?'warmupExercise':''}" data-exercise="${i}">
-<div class="exerciseTop">${imageHtml(e.name)}<div class="${readOnly?'exercisePreviewLabel':'check'}">${readOnly?'':`<input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}>`}<span><strong>${esc(e.name)}</strong><small>${warm?'Warm-up${readOnly?'':' · mark complete'}':e.sets+' sets × '+esc(e.reps)}</small></span></div></div>
+<div class="exerciseTop">${imageHtml(e.name)}<div class="${readOnly?'exercisePreviewLabel':'check'}">${readOnly?'':`<input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}>`}<span><strong>${esc(e.name)}</strong><small>${warm?'${readOnly?'Warm-up':'Warm-up · mark complete'}':e.sets+' sets × '+esc(e.reps)}</small></span></div></div>
 ${warm?warmupGuidance(e.name):readOnly?`<small class="muted">Alternative: ${esc(e.alternative||"None")}</small>`:`<div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
 <button type="button" class="subtle" data-index="${i}" data-action="swap">${e.substituted?'Use original':'Use alternative'}</button></div>
 <div class="weightPanel" data-weight-panel="${i}" hidden><label>Max weight (lb, optional)<input type="number" min="0" step="0.5" inputmode="decimal" placeholder="—" data-index="${i}" data-action="weight" value="${esc(e.weight)}"></label></div>
