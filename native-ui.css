@@ -113,3 +113,16 @@ header.mainHeader { padding: 18px 0 4px; }
 #imageDialog .imageDialogHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 #imageDialog .imageDialogHead #imageTitle { flex: 1 1 auto; min-width: 0; }
 #imageDialog #closeImage { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; max-width: 44px; min-height: 44px; padding: 0; margin: 0; border: 0; border-radius: 50%; background: #efeff3; color: #171717; font-size: 20px; line-height: 1; }
+
+/* Integrated workout overview on Home. */
+.homeDumbbell { width: 34px; height: 34px; flex-shrink: 0; }
+.homeWorkoutStats { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 20px; }
+.homeWorkoutStats span { display: inline-flex; align-items: center; gap: 4px; padding: 9px 12px; border-radius: 12px; background: #f3f3f6; font-size: 13px; color: #494950; }
+.homeWorkoutStats strong { color: #171717; }
+.homeWorkoutSequence { display: flex; gap: 6px; margin-top: 14px; }
+.homeWorkoutSequence span { flex: 1; height: 5px; border-radius: 4px; background: #e4e4e9; }
+.homeWorkoutSequence span.current { background: #171717; }
+.homeWarmup { margin-top: 20px; padding: 14px 16px; background: #f6f6f8; border-radius: 14px; }
+.homeWarmup strong { font-size: 14px; }
+.homeWarmup p { font-size: 13px; color: #696970; margin: 5px 0 0; }
+.homeLastCompleted { font-size: 12px; color: #696970; margin: 12px 0 0; }
