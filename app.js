@@ -116,6 +116,15 @@ function warmupExercises(d){
  if(Array.isArray(d.warmupEx))return d.warmupEx;
  return String(d.warmup||'').split(/\s*[·•\n]\s*/).map(x=>x.trim()).filter(Boolean).map(name=>[name,1,'Complete once','']);
 }
+function warmupGuidance(name){
+ if(!/gentle pain[- ]free movement/i.test(String(name)))return '';
+ return '<div class="warmupGuidance"><strong>2–3 minute gentle mobility sequence</strong><ol>'+
+ '<li><b>Standing hip circles · 30 sec:</b> Slowly rotate your hips both ways within a comfortable range.</li>'+
+ '<li><b>Cat–Cow · 45 sec:</b> On hands and knees, gently round and extend your spine without forcing it.</li>'+
+ '<li><b>Shoulder rolls · 30 sec:</b> Slowly roll shoulders forward and backward.</li>'+
+ '<li><b>Supine pelvic tilts · 45 sec:</b> Lie on your back, knees bent; gently flatten and release your lower back.</li>'+
+ '</ol><small>After 5 minutes of easy cycling. Skip any movement that causes pain.</small></div>';
+}
 function exerciseSeed(e,i,group='main'){return {id:i,name:e[0],sets:e[1],reps:e[2],alternative:e[3]||'',group,done:false,weight:'',substituted:false};}
 function render(){
 
@@ -165,7 +174,7 @@ const renderOne=(e,i)=>{
  const warm=e.group==='warmup';
  return `<article class="exercise ${e.done?'done':''} ${warm?'warmupExercise':''}" data-exercise="${i}">
 <div class="exerciseTop">${imageHtml(e.name)}<label class="check"><input type="checkbox" data-index="${i}" data-action="done" ${e.done?'checked':''}><span><strong>${esc(e.name)}</strong><small>${warm?'Warm-up · mark complete':e.sets+' sets × '+esc(e.reps)}</small></span></label></div>
-${warm?'':`<div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
+${warm?warmupGuidance(e.name):`<div class="fields"><button type="button" class="subtle" data-index="${i}" data-action="weightToggle">${e.weight!==''?'⚖ '+esc(e.weight)+' lb · Edit':'＋ Max weight'}</button>
 <button type="button" class="subtle" data-index="${i}" data-action="swap">${e.substituted?'Use original':'Use alternative'}</button></div>
 <div class="weightPanel" data-weight-panel="${i}" hidden><label>Max weight (lb, optional)<input type="number" min="0" step="0.5" inputmode="decimal" placeholder="—" data-index="${i}" data-action="weight" value="${esc(e.weight)}"></label></div>
 <small class="muted">Alternative: ${esc(e.substituted?e.originalName||'Original exercise':e.alternative)}</small>`}
@@ -334,7 +343,7 @@ $('programDaysList').onclick=e=>{
  const i=Number(b.dataset.day),d=browsedProgram.days[i];if(!d)return;
  $('dayTitle').textContent=d.name;
  $('dayMeta').textContent=browsedProgram.name+' · Day '+(i+1)+' of '+browsedProgram.days.length;
- $('dayWarmup').innerHTML='<ul class="warmupList">'+warmupExercises(d).map(ex=>'<li>'+esc(ex[0])+'</li>').join('')+'</ul>';
+ $('dayWarmup').innerHTML='<ul class="warmupList">'+warmupExercises(d).map(ex=>'<li>'+esc(ex[0])+warmupGuidance(ex[0])+'</li>').join('')+'</ul>';
  $('dayExercises').innerHTML=d.ex.map(ex=>'<li class="previewItem">'+imageHtml(ex[0])+'<span><strong>'+esc(ex[0])+'</strong><small>'+ex[1]+' sets × '+esc(ex[2])+'</small></span></li>').join('');
  showSection('daySection');
 };
