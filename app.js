@@ -152,16 +152,28 @@ if(state.active) renderActive();
 renderHistory();
 if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);
 }
-// Recalculate the next day after history deletion using the latest remaining session.
+// The next workout is derived from remaining history, not a stale saved cursor.
 function recalculateNextWorkout(programId){
  const p=PROGRAMS.find(item=>item.id===programId);
- if(!p?.days?.length)return;
+ if(!p?.days?.length||state.active?.programId===programId)return false;
  const latest=state.sessions.filter(session=>session.programId===programId&&Number.isFinite(Date.parse(session.endedAt)))
   .sort((a,b)=>Date.parse(b.endedAt)-Date.parse(a.endedAt))[0];
- const lastIndex=latest?Number(latest.dayIndex):NaN;
- state.next[programId]=Number.isInteger(lastIndex)&&lastIndex>=0?(lastIndex+1)%p.days.length:0;
+ let lastIndex=latest?Number(latest.dayIndex):NaN;
+ if(latest&&(!Number.isInteger(lastIndex)||lastIndex<0||lastIndex>=p.days.length)){
+  lastIndex=p.days.findIndex(d=>d.name===latest.dayName);
+ }
+ const next=latest&&Number.isInteger(lastIndex)&&lastIndex>=0?(lastIndex+1)%p.days.length:0;
+ if(state.next[programId]===next)return false;
+ state.next[programId]=next;
+ return true;
+}
+function recalculateAllNextWorkouts(){
+ let changed=false;
+ for(const p of PROGRAMS)if(recalculateNextWorkout(p.id))changed=true;
+ return changed;
 }
 function renderUpcoming(){
+ recalculateAllNextWorkouts();
  const p=program(),i=(state.next[p.id]||0)%p.days.length,d=p.days[i];
  const warmups=warmupExercises(d);
  const sets=d.ex.reduce((total,exercise)=>{
@@ -318,7 +330,7 @@ if(deleteButton){
  if(!pending.includes(id))pending.push(id);
  try{localStorage.setItem(key,JSON.stringify(pending))}catch{alert('Unable to save deletion request. Nothing was deleted.');return;}
  state.sessions=state.sessions.filter(x=>x.id!==id);
- recalculateNextWorkout(session.programId);
+ recalculateAllNextWorkouts();
  save();render();
  window.dispatchEvent(new Event('workout-session-delete-pending'));
  return;
@@ -334,7 +346,7 @@ $('export').onclick=()=>{
 const blob=new Blob([JSON.stringify({exportedAt:now(),version:1,...state},null,2)],{type:'application/json'});
 const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='workout-history-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;if(state.active){renderHistory();if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);}else{render();}renderProgramGrid();}}catch{}});
+window.addEventListener('workout-cloud-merged',()=>{try{const incoming=JSON.parse(localStorage.getItem(KEY));if(incoming&&Array.isArray(incoming.sessions)){state=incoming;if(recalculateAllNextWorkouts())save();if(state.active){renderHistory();if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);}else{render();}renderProgramGrid();}}catch{}});
 $('navHistory').onclick=()=>showSection('historySection');
 $('homeHistory').onclick=()=>showSection('historySection');
 $('homePrograms').onclick=()=>{renderProgramGrid();showSection('programSection');};
