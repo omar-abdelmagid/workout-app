@@ -139,3 +139,10 @@ header.mainHeader { padding: 18px 0 4px; }
 .warmupGuidance ol { list-style:decimal; padding-left:20px; margin:9px 0; }
 .warmupGuidance li { margin:7px 0; }
 .warmupGuidance small { color:#5b655e; }
+
+/* Shared exercise cards in read-only program day previews. */
+#dayExercises { list-style:none; padding:0; margin:0; }
+#dayWarmup .exercise, #dayExercises .exercise { margin:12px 0; }
+.exercisePreviewLabel { flex:1; min-width:0; }
+.exercisePreviewLabel strong { display:block; font-size:16px; line-height:1.35; }
+.exercisePreviewLabel small { display:block; }
