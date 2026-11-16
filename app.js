@@ -173,7 +173,7 @@ function recalculateAllNextWorkouts(){
  return changed;
 }
 function renderUpcoming(){
- recalculateAllNextWorkouts();
+ if(recalculateAllNextWorkouts())save();
  const p=program(),i=(state.next[p.id]||0)%p.days.length,d=p.days[i];
  const warmups=warmupExercises(d);
  const sets=d.ex.reduce((total,exercise)=>{
