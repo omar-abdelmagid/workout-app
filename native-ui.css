@@ -126,3 +126,9 @@ header.mainHeader { padding: 18px 0 4px; }
 .homeWarmup strong { font-size: 14px; }
 .homeWarmup p { font-size: 13px; color: #696970; margin: 5px 0 0; }
 .homeLastCompleted { font-size: 12px; color: #696970; margin: 12px 0 0; }
+
+/* Elapsed workout stopwatch alongside sticky progress summary. */
+.stickyProgressHead { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.stickyProgressHead > div:first-child { min-width:0; }
+.workoutStopwatch { display:flex; align-items:center; gap:5px; flex-shrink:0; font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; color:#171717; }
+.workoutStopwatch span { font-size:19px; font-weight:400; color:#68686f; }
