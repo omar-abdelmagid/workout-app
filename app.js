@@ -128,11 +128,35 @@ renderHistory();
 if(window.renderWorkoutProgress)window.renderWorkoutProgress(state.sessions);
 }
 function renderUpcoming(){
-const p=program(),i=(state.next[p.id]||0)%p.days.length,d=p.days[i];
-$('nextTitle').textContent=d.name;
-$('homeNext').textContent='Next: '+d.name;
-$('homeFocus').textContent=({ 'Lower A':'Quads · Hamstrings · Calves · Core','Lower B':'Glutes · Hamstrings · Calves · Core','Upper A':'Chest · Back · Arms','Upper B':'Back · Chest · Arms','Legs':'Quads · Hamstrings · Glutes','Chest & Biceps':'Chest · Biceps','Back & Triceps':'Back · Triceps','Shoulders':'Shoulders · Rear delts','Mobility & Abs':'Mobility · Core' })[d.name]||'Strength training';
-$('nextMeta').textContent=p.name+' · Day '+(i+1)+' of '+p.days.length+' · '+warmupExercises(d).length+' warm-up activities · '+d.ex.length+' exercises';
+ const p=program(),i=(state.next[p.id]||0)%p.days.length,d=p.days[i];
+ const warmups=warmupExercises(d);
+ const sets=d.ex.reduce((total,exercise)=>{
+  const count=Number(exercise[1]);return total+(Number.isFinite(count)&&count>0?count:0);
+ },0);
+ const knownFocus={ 'Lower A':'Quads · Hamstrings · Calves · Core','Lower B':'Glutes · Hamstrings · Calves · Core','Upper A':'Chest · Back · Arms','Upper B':'Back · Chest · Arms','Legs':'Quads · Hamstrings · Glutes','Chest & Biceps':'Chest · Biceps','Back & Triceps':'Back · Triceps','Shoulders':'Shoulders · Rear delts','Mobility & Abs':'Mobility · Core' };
+ const focus=Array.isArray(d.focus)?d.focus.join(' · '):typeof d.focus==='string'?d.focus:knownFocus[d.name]||'';
+ $('nextProgramName').textContent=p.name;
+ const description=typeof p.description==='string'?p.description.trim():'';
+ $('nextProgramDescription').textContent=description;
+ $('nextProgramDescription').hidden=!description;
+ $('nextDay').textContent='Day '+(i+1)+' of '+p.days.length;
+ $('nextTitle').textContent=d.name;
+ $('nextFocus').textContent=focus;
+ $('nextFocus').hidden=!focus;
+ $('nextExerciseCount').textContent=d.ex.length;
+ $('nextSetCount').textContent=sets;
+ $('nextSequence').innerHTML=p.days.map((_,index)=>'<span'+(index===i?' class="current"':'')+'></span>').join('');
+ $('nextWarmupSection').hidden=warmups.length===0;
+ $('nextWarmupSummary').textContent=warmups.length+' '+(warmups.length===1?'activity':'activities')+' before your main workout.';
+ const previous=state.sessions.filter(session=>session.programId===p.id&&session.dayIndex===i&&
+  (!p.version||(session.programVersion||1)===p.version)&&Number.isFinite(Date.parse(session.endedAt)))
+  .sort((a,b)=>Date.parse(b.endedAt)-Date.parse(a.endedAt))[0];
+ $('nextHistory').hidden=!previous;
+ $('nextLastCompleted').textContent=previous?new Date(previous.endedAt).toLocaleDateString(undefined,{dateStyle:'medium'}):'';
+ if(previous)$('nextLastCompleted').dateTime=previous.endedAt;
+ else $('nextLastCompleted').removeAttribute('datetime');
+ $('homeNext').textContent='Next: '+d.name;
+ $('homeFocus').textContent=focus||'Strength training';
 }
 function renderActive(){
 const s=state.active,completed=s.exercises.filter(e=>e.done).length;
