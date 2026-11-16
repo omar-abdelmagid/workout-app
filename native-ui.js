@@ -3,7 +3,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const groups = {
-    today: ['home', 'upcoming', 'active'],
+    today: ['home', 'active'],
     programs: ['programSection', 'programDaysSection', 'daySection'],
     history: ['historySection'],
     progress: ['progressSection'],
